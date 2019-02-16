@@ -67,6 +67,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             {
                 // Reset the rigidbody to how it was before we grabbed it
                 rigidbody.interpolation = initialInterpolationSetting;
+                rigidbody.freezeRotation = false;
                 rigidbody = null;
             }
             
@@ -88,7 +89,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 if (hit.rigidbody != null && !hit.rigidbody.isKinematic)
                 {
                     // Track rigidbody's initial information
-                    rigidbody = hit.rigidbody;
+                    rigidbody = hit.rigidbody;                    
+                    rigidbody.freezeRotation = true;
+                    targetRotation = rigidbody.rotation;
                     initialInterpolationSetting = rigidbody.interpolation;
                     rotationDifferenceEuler = hit.transform.rotation.eulerAngles - transform.rotation.eulerAngles;
 
@@ -116,35 +119,35 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         if (rigidbody)
         {
             // We are holding an object, time to rotate & move it
-            
+
             Ray ray = CenterRay();
 
-            // Rotate the object to remain consistent with any changes in player's rotation
-            rigidbody.MoveRotation(Quaternion.Euler(rotationDifferenceEuler + transform.rotation.eulerAngles));
-
-            // Get the destination point for the point on the object we grabbed
-            Vector3 holdPoint = ray.GetPoint(currentGrabDistance);
-            Debug.DrawLine(ray.origin, holdPoint, Color.blue, Time.fixedDeltaTime);
-
             // Apply any intentional rotation input made by the player & clear tracked input
-            Vector3 currentEuler = rigidbody.rotation.eulerAngles;
-            rigidbody.transform.RotateAround(holdPoint, transform.right, rotationInput.y);
-            rigidbody.transform.RotateAround(holdPoint, transform.up, -rotationInput.x);
-            
+            var intentionalRotation = Quaternion.AngleAxis(rotationInput.y, transform.right) * Quaternion.AngleAxis(-rotationInput.x, transform.up) * rigidbody.rotation; 
+
+            //var relativeToPlayerRotation = rigidbody.rotation * Quaternion.Euler(rotationDifferenceEuler);
+
+            // Rotate the object to remain consistent with any changes in player's rotation
+            //Todo: We need to make the grabbed object remain consistent with the players rotation
+            rigidbody.MoveRotation(intentionalRotation);
+
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
-            rigidbody.angularVelocity = Vector3.zero;
-            rotationInput = Vector2.zero;
-            rotationDifferenceEuler = rigidbody.transform.rotation.eulerAngles - transform.rotation.eulerAngles;
+            rigidbody.angularVelocity   = Vector3.zero;
+            rotationInput               = Vector2.zero;
+            rotationDifferenceEuler     = rigidbody.rotation.eulerAngles - transform.rotation.eulerAngles;
             
             // Calculate object's center position based on the offset we stored
             // NOTE: We need to convert the local-space point back to world coordinates
-            Vector3 centerDestination = holdPoint - rigidbody.transform.TransformVector(hitOffsetLocal);
+            // Get the destination point for the point on the object we grabbed
+            Vector3 holdPoint           = ray.GetPoint(currentGrabDistance);
+            Vector3 centerDestination   = holdPoint - rigidbody.transform.TransformVector(hitOffsetLocal);
+            Debug.DrawLine(ray.origin, holdPoint, Color.blue, Time.fixedDeltaTime);
 
             // Find vector from current position to destination
             Vector3 toDestination = centerDestination - rigidbody.transform.position;
 
             // Calculate force
-            Vector3 force = toDestination / Time.fixedDeltaTime;
+            Vector3 force = toDestination / Time.fixedDeltaTime * 0.8f;
 
             // Remove any existing velocity and add force to move to final position
             rigidbody.velocity = Vector3.zero;
