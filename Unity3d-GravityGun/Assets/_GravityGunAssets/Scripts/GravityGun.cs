@@ -19,6 +19,11 @@ using UnityStandardAssets.Characters.FirstPerson;
  * I hope you guys can learn something from this script. Enjoy :)
  * 
  * Original author: Jake Perry, reddit.com/user/nandos13
+ * 
+ * February 2019, this script was used as the base for a Unity3d Gravity Gun Sample 
+ * project on Github to make it even better. 
+ * https://github.com/Laumania/Unity3d-GravityGun
+ * Repo created by Mads Laumann aka Laumania, http://laumania.net
  */
 public class GravityGun : MonoBehaviour
 {
