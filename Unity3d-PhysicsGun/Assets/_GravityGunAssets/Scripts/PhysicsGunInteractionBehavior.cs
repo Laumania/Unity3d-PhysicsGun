@@ -91,7 +91,6 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     // Track rigidbody's initial information
                     rigidbody = hit.rigidbody;                    
                     rigidbody.freezeRotation = true;
-                    targetRotation = rigidbody.rotation;
                     initialInterpolationSetting = rigidbody.interpolation;
                     rotationDifferenceEuler = hit.transform.rotation.eulerAngles - transform.rotation.eulerAngles;
 
