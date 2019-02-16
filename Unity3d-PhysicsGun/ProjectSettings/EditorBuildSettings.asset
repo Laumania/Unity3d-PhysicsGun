@@ -5,7 +5,10 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
+  - enabled: 0
+    path: 
+    guid: 00000000000000000000000000000000
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/_GravityGunAssets/Scenes/PhysicsGunSampleScene.unity
+    guid: 211d77c8e9bc09b44a2898d2bb9d90f9
   m_configObjects: {}
