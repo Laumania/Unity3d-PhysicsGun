@@ -41,6 +41,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private RigidbodyInterpolation initialInterpolationSetting;
     /// <summary>The difference between player & object rotation, updated when picked up or when rotated by the player</summary>
     private Vector3 rotationDifferenceEuler;
+    private Quaternion rotationDifference;
     
     /// <summary>Tracks player input to rotate current object. Used and reset every fixedupdate call</summary>
     private Vector2 rotationInput;
@@ -91,12 +92,12 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     // Track rigidbody's initial information
                     rigidbody = hit.rigidbody;                    
                     rigidbody.freezeRotation = true;
+                    
                     initialInterpolationSetting = rigidbody.interpolation;
-                    rotationDifferenceEuler = hit.transform.rotation.eulerAngles - transform.rotation.eulerAngles;
-
-                    hitOffsetLocal = hit.transform.InverseTransformVector(hit.point - hit.transform.position);
-
-                    currentGrabDistance = Vector3.Distance(ray.origin, hit.point);
+                    rotationDifferenceEuler     = hit.transform.rotation.eulerAngles - transform.rotation.eulerAngles;
+                    rotationDifference          = Quaternion.Inverse(transform.rotation) * hit.rigidbody.rotation;
+                    hitOffsetLocal              = hit.transform.InverseTransformVector(hit.point - hit.transform.position);
+                    currentGrabDistance         = Vector3.Distance(ray.origin, hit.point);
 
                     // Set rigidbody's interpolation for proper collision detection when being moved by the player
                     rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
@@ -122,18 +123,19 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             Ray ray = CenterRay();
 
             // Apply any intentional rotation input made by the player & clear tracked input
-            var intentionalRotation = Quaternion.AngleAxis(rotationInput.y, transform.right) * Quaternion.AngleAxis(-rotationInput.x, transform.up) * rigidbody.rotation; 
-
-            //var relativeToPlayerRotation = rigidbody.rotation * Quaternion.Euler(rotationDifferenceEuler);
+            var intentionalRotation         = Quaternion.AngleAxis(rotationInput.y, transform.right) * Quaternion.AngleAxis(-rotationInput.x, transform.up) * rigidbody.rotation; 
+            var relativeToPlayerRotation    = rotationDifference * transform.rotation;
 
             // Rotate the object to remain consistent with any changes in player's rotation
-            //Todo: We need to make the grabbed object remain consistent with the players rotation
-            rigidbody.MoveRotation(intentionalRotation);
+            //rigidbody.MoveRotation(intentionalRotation);
+            rigidbody.MoveRotation(relativeToPlayerRotation);
+
 
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
             rigidbody.angularVelocity   = Vector3.zero;
             rotationInput               = Vector2.zero;
             rotationDifferenceEuler     = rigidbody.rotation.eulerAngles - transform.rotation.eulerAngles;
+            rotationDifference          = Quaternion.Inverse(transform.rotation) * rigidbody.rotation;
             
             // Calculate object's center position based on the offset we stored
             // NOTE: We need to convert the local-space point back to world coordinates
