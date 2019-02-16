@@ -1,4 +1,4 @@
-# Unity3d-GravityGun
+# Unity3d Gravity Gun Sample
 Unity3d sample implementation of a Half-life 2 / Garry's mod Gravity Gun.
 
 Originally the "GravityGun" sccript is based on this script: https://pastebin.com/w1G8m3dH
