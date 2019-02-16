@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityStandardAssets.Characters.FirstPerson;
 
 /* "Gravity Gun" script I quickly threw together to help another user out on Reddit.
  * When clicking the mouse button, you will grab a rigidbody object in front of the
@@ -21,22 +22,20 @@ using UnityEngine;
  */
 public class GravityGun : MonoBehaviour
 {
+    /// <summary>For easy enable/disable mouse look when rotating objects, we store this reference</summary>
+    private FirstPersonController _firstPersonController;
+
     /// <summary>The rigidbody we are currently holding</summary>
     private new Rigidbody rigidbody;
 
-    #region Held Object Info
     /// <summary>The offset vector from the object's position to hit point, in local space</summary>
     private Vector3 hitOffsetLocal;
-
     /// <summary>The distance we are holding the object at</summary>
     private float currentGrabDistance;
-
     /// <summary>The interpolation state when first grabbed</summary>
     private RigidbodyInterpolation initialInterpolationSetting;
-
     /// <summary>The difference between player & object rotation, updated when picked up or when rotated by the player</summary>
     private Vector3 rotationDifferenceEuler;
-    #endregion
     
     /// <summary>Tracks player input to rotate current object. Used and reset every fixedupdate call</summary>
     private Vector2 rotationInput;
@@ -44,23 +43,25 @@ public class GravityGun : MonoBehaviour
     /// <summary>The maximum distance at which a new object can be picked up</summary>
     private const float maxGrabDistance = 30;
     
-    /// <returns>Ray from center of the main camera's viewport forward</returns>
-    private Ray CenterRay()
+    void Start()
     {
-        return Camera.main.ViewportPointToRay(Vector3.one * 0.5f);
+        _firstPersonController = GetComponent<FirstPersonController>();
+
+        if(_firstPersonController == null)
+            Debug.LogError($"{nameof(_firstPersonController)} is null and the gravity gun won't work properly!", this);
     }
-	
+    
 	void Update ()
     {
+        _firstPersonController.enabled = !Input.GetKey(KeyCode.R); 
+
         if (!Input.GetMouseButton(0))
         {
             // We are not holding the mouse button. Release the object and return before checking for a new one
-
             if (rigidbody != null)
             {
                 // Reset the rigidbody to how it was before we grabbed it
                 rigidbody.interpolation = initialInterpolationSetting;
-
                 rigidbody = null;
             }
             
@@ -98,19 +99,14 @@ public class GravityGun : MonoBehaviour
         else
         {
             // We are already holding an object, listen for rotation input
-
             if (Input.GetKey(KeyCode.R))
             {
                 rotationInput += new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));
             }
         }
-
-        // NOTE: You may want to write some code here to prevent your player's aim from moving while you rotate objects
-        // Eg.
-        // playerAimScript.enabled = !Input.GetKey(KeyCode.R);
 	}
 
-    private void FixedUpdate()
+    void FixedUpdate()
     {
         if (rigidbody)
         {
@@ -149,5 +145,11 @@ public class GravityGun : MonoBehaviour
             rigidbody.velocity = Vector3.zero;
             rigidbody.AddForce(force, ForceMode.VelocityChange);
         }
+    }
+
+    /// <returns>Ray from center of the main camera's viewport forward</returns>
+    private Ray CenterRay()
+    {
+        return Camera.main.ViewportPointToRay(Vector3.one * 0.5f);
     }
 }
