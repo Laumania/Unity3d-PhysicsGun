@@ -25,7 +25,7 @@ using UnityStandardAssets.Characters.FirstPerson;
  * https://github.com/Laumania/Unity3d-GravityGun
  * Repo created by Mads Laumann aka Laumania, http://laumania.net
  */
-public class GravityGun : MonoBehaviour
+public class PhysicsGunInteractionBehavior : MonoBehaviour
 {
     /// <summary>For easy enable/disable mouse look when rotating objects, we store this reference</summary>
     private FirstPersonController _firstPersonController;
