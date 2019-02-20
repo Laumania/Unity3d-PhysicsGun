@@ -104,14 +104,14 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             var relativeToPlayerRotation    = _rotationDifference * transform.rotation;
 
             // Rotate the object to remain consistent with any changes in player's rotation
-            _grabbedRigidbody.MoveRotation(intentionalRotation);
-            //_grabbedRigidbody.MoveRotation(relativeToPlayerRotation);
+            //_grabbedRigidbody.MoveRotation(intentionalRotation);
+            _grabbedRigidbody.MoveRotation(relativeToPlayerRotation);
 
 
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
             _grabbedRigidbody.angularVelocity   = Vector3.zero;
-            _rotationInput               = Vector2.zero;
-            _rotationDifference          = Quaternion.Inverse(transform.rotation) * _grabbedRigidbody.rotation;
+            _rotationInput                      = Vector2.zero;
+            _rotationDifference                 = Quaternion.Inverse(transform.rotation) * _grabbedRigidbody.rotation;
             
             // Calculate object's center position based on the offset we stored
             // NOTE: We need to convert the local-space point back to world coordinates
