@@ -104,8 +104,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             var relativeToPlayerRotation    = _rotationDifference * transform.rotation;
 
             // Rotate the object to remain consistent with any changes in player's rotation
-            //rigidbody.MoveRotation(intentionalRotation);
-            _grabbedRigidbody.MoveRotation(relativeToPlayerRotation);
+            _grabbedRigidbody.MoveRotation(intentionalRotation);
+            //_grabbedRigidbody.MoveRotation(relativeToPlayerRotation);
 
 
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
