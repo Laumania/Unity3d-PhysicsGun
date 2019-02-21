@@ -28,6 +28,16 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Vector2                 _rotationInput;
     /// <summary>The maximum distance at which a new object can be picked up</summary>
     private const float             _maxGrabDistance = 50;
+
+    //ScrollWheel ObjectMovement
+    private Vector3 _scrollWheelInput = Vector3.zero;
+    [SerializeField]
+    private float _scrollWheelSensitivity = 20f;
+
+    //Vector3.Zero and Vector2.zero create a new Vector3 each time they are called so these simply save that process and a small amount of cpu runtime.
+    private Vector3 _zeroVector3 = Vector3.zero;
+    private Vector3 _oneVector3  = Vector3.one;
+    private Vector3 _zeroVector2 = Vector2.zero;
     
     void Start()
     {
@@ -61,8 +71,10 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             Ray ray = CenterRay();
             RaycastHit hit;
 
+            //Just so These aren't included in a build
+#if UNITY_EDITOR
             Debug.DrawRay(ray.origin, ray.direction * _maxGrabDistance, Color.blue, 0.01f);
-
+#endif
             if (Physics.Raycast(ray, out hit, _maxGrabDistance))
             {
                 // Don't pick up kinematic rigidbodies (they can't move)
@@ -86,8 +98,10 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // We are already holding an object, listen for rotation input
             if (Input.GetKey(KeyCode.R))
             {
-                _rotationInput += new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));
+                _rotationInput += new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));                
             }
+
+            _scrollWheelInput += transform.forward * (Input.GetAxis("Mouse ScrollWheel") * _scrollWheelSensitivity);
         }
 	}
    
@@ -108,25 +122,28 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             _grabbedRigidbody.MoveRotation(userRotation ? intentionalRotation : relativeToPlayerRotation);            
 
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
-            _grabbedRigidbody.angularVelocity   = Vector3.zero;
-            _rotationInput                      = Vector2.zero;
-            _rotationDifference = Quaternion.Inverse(transform.rotation) * _grabbedRigidbody.rotation;
+            _grabbedRigidbody.angularVelocity   = _zeroVector3;
+            _rotationInput                      = _zeroVector2;
+            _rotationDifference                 = Quaternion.Inverse(transform.rotation) * _grabbedRigidbody.rotation;
 
             // Calculate object's center position based on the offset we stored
             // NOTE: We need to convert the local-space point back to world coordinates
             // Get the destination point for the point on the object we grabbed
-            Vector3 holdPoint           = ray.GetPoint(_currentGrabDistance);
-            Vector3 centerDestination   = holdPoint - _grabbedRigidbody.transform.TransformVector(_hitOffsetLocal);
-            Debug.DrawLine(ray.origin, holdPoint, Color.blue, Time.fixedDeltaTime);
+            var holdPoint           = ray.GetPoint(_currentGrabDistance);
+            var centerDestination   = holdPoint - _grabbedRigidbody.transform.TransformVector(_hitOffsetLocal);
 
+#if UNITY_EDITOR
+            Debug.DrawLine(ray.origin, holdPoint, Color.blue, Time.fixedDeltaTime);
+#endif
             // Find vector from current position to destination
-            Vector3 toDestination = centerDestination - _grabbedRigidbody.transform.position;
+            var toDestination = centerDestination - _grabbedRigidbody.transform.position;
 
             // Calculate force
-            Vector3 force = toDestination / Time.fixedDeltaTime * 0.8f;
+            var force = toDestination / Time.fixedDeltaTime * 0.8f;
 
+            force += _scrollWheelInput;
             // Remove any existing velocity and add force to move to final position
-            _grabbedRigidbody.velocity = Vector3.zero;
+            _grabbedRigidbody.velocity = _zeroVector3;
             _grabbedRigidbody.AddForce(force, ForceMode.VelocityChange);
         }
     }
@@ -134,6 +151,6 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     /// <returns>Ray from center of the main camera's viewport forward</returns>
     private Ray CenterRay()
     {
-        return Camera.main.ViewportPointToRay(Vector3.one * 0.5f);
+        return Camera.main.ViewportPointToRay(_oneVector3 * 0.5f);
     }
 }
