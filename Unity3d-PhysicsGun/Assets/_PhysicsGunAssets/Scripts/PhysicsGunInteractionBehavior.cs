@@ -46,11 +46,15 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Vector3 _oneVector3  = Vector3.one;
     private Vector3 _zeroVector2 = Vector2.zero;
 
-    private LineRenderer _lineRenderer;
     [Header("Line Renderer Settings")]
+    [SerializeField]
+    private Vector2 uvAnimationRate = new Vector2(1.0f, 0.0f);
+    Vector2 uvOffset = Vector2.zero;
+    private int _mainTex = Shader.PropertyToID("_MainTex");
     [SerializeField]
     private int ArcResolution = 12;
     private Vector3[] _inputPoints;
+    private LineRenderer _lineRenderer;
 
     private bool _justReleased;
     private bool _wasKinematic;
@@ -171,9 +175,23 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
             var userRotation = Input.GetKey(KeyCode.R);
 
-            // Rotate the object to remain consistent with any changes in player's rotation
-            _grabbedRigidbody.MoveRotation(userRotation ? intentionalRotation : relativeToPlayerRotation);
+            if(userRotation && Input.GetKey(KeyCode.LeftShift))
+            {
+                var currentRot = _grabbedRigidbody.rotation;
 
+                var newRot = currentRot.eulerAngles;
+
+                newRot.x = Mathf.Round(newRot.x / 45) * 45;
+                newRot.y = Mathf.Round(newRot.y / 45) * 45;
+                newRot.z = Mathf.Round(newRot.z / 45) * 45;
+
+                _grabbedRigidbody.rotation = Quaternion.Euler(newRot); 
+            }
+            else
+            {
+                // Rotate the object to remain consistent with any changes in player's rotation
+                _grabbedRigidbody.MoveRotation(userRotation ? intentionalRotation : relativeToPlayerRotation);
+            }
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
             _grabbedRigidbody.angularVelocity   = _zeroVector3;
             _rotationInput                      = _zeroVector2;
@@ -208,6 +226,15 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
             //_lineRenderer.SetPosition(1, _grabbedRigidbody.transform.TransformPoint(_hitOffsetLocal));
             RenderArc(transform.position, _grabbedRigidbody.transform.TransformPoint(_hitOffsetLocal), holdPoint);
+        }
+    }
+
+    private void LateUpdate()
+    {
+        uvOffset -= (uvAnimationRate * Time.deltaTime);
+        if (_lineRenderer.enabled)
+        {
+            _lineRenderer.material.SetTextureOffset(_mainTex, uvOffset);
         }
     }
 
