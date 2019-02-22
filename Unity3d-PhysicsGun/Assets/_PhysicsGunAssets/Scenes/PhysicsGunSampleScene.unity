@@ -187,7 +187,7 @@ Canvas:
   m_OverrideSorting: 0
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
-  m_AdditionalShaderChannelsFlag: 0
+  m_AdditionalShaderChannelsFlag: 25
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
@@ -302,8 +302,8 @@ MonoBehaviour:
   _snappedRotationSens: 12.5
   _scrollWheelSensitivity: 5
   _minObjectDistance: 2.5
-  uvAnimationRate: {x: 1, y: 0}
-  ArcResolution: 16
+  _uvAnimationRate: {x: 1, y: 0}
+  _arcResolution: 12
 --- !u!4 &281896453 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 5e9e851c0e142814dac026a256ba2ac0,
