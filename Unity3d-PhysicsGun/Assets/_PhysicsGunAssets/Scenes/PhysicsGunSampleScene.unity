@@ -298,10 +298,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1671265afba22e341a3a32faea6f5e50, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _freeRotationSens: 1.5
+  _snappedRotationSens: 12.5
   _scrollWheelSensitivity: 5
   _minObjectDistance: 2.5
-  ArcResolution: 16
   uvAnimationRate: {x: 1, y: 0}
+  ArcResolution: 16
 --- !u!4 &281896453 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 5e9e851c0e142814dac026a256ba2ac0,
@@ -879,10 +881,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1671265afba22e341a3a32faea6f5e50, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _freeRotationSens: 1.5
+  _snappedRotationSens: 5
   _scrollWheelSensitivity: 10
   _minObjectDistance: 2
-  ArcResolution: 12
   uvAnimationRate: {x: 1, y: 0}
+  ArcResolution: 12
 --- !u!1 &790655129
 GameObject:
   m_ObjectHideFlags: 0
