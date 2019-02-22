@@ -31,15 +31,21 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
     //ScrollWheel ObjectMovement
     private Vector3 _scrollWheelInput = Vector3.zero;
+
+    [Header("Scroll Wheel Object Movement")]
     [SerializeField]
-    private float _scrollWheelSensitivity = 20f;
+    private float _scrollWheelSensitivity = 5f;
+    //The min distance the object can be from the player.  The max distance will be _maxGrabDistance;
+    [SerializeField]
+    private float _minObjectDistance = 2.5f;
+    private bool distanceChanged;
 
     //Vector3.Zero and Vector2.zero create a new Vector3 each time they are called so these simply save that process and a small amount of cpu runtime.
     private Vector3 _zeroVector3 = Vector3.zero;
     private Vector3 _oneVector3  = Vector3.one;
     private Vector3 _zeroVector2 = Vector2.zero;
     
-    void Start()
+    private void Start()
     {
         _firstPersonController = GetComponent<FirstPersonController>();
 
@@ -47,7 +53,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             Debug.LogError($"{nameof(_firstPersonController)} is null and the gravity gun won't work properly!", this);
     }
     
-	void Update ()
+	private void Update ()
     {
         _firstPersonController.enabled = !Input.GetKey(KeyCode.R); 
 
@@ -60,6 +66,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 _grabbedRigidbody.interpolation = _initialInterpolationSetting;
                 _grabbedRigidbody.freezeRotation = false;
                 _grabbedRigidbody = null;
+                _scrollWheelInput = _zeroVector3;
             }
             return;
         }
@@ -67,7 +74,6 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         if (_grabbedRigidbody == null)
         {
             // We are not holding an object, look for one to pick up
-
             Ray ray = CenterRay();
             RaycastHit hit;
 
@@ -82,11 +88,11 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 {
                     // Track rigidbody's initial information
                     _grabbedRigidbody                   = hit.rigidbody;
-                    _grabbedRigidbody.freezeRotation = true;
+                    _grabbedRigidbody.freezeRotation    = true;
                     _initialInterpolationSetting        = _grabbedRigidbody.interpolation;
                     _rotationDifference                 = Quaternion.Inverse(transform.rotation) * _grabbedRigidbody.rotation;
                     _hitOffsetLocal                     = hit.transform.InverseTransformVector(hit.point - hit.transform.position);
-                    _currentGrabDistance                = Vector3.Distance(ray.origin, hit.point);
+                    _currentGrabDistance                = hit.distance; // Vector3.Distance(ray.origin, hit.point);
 
                     // Set rigidbody's interpolation for proper collision detection when being moved by the player
                     _grabbedRigidbody.interpolation     = RigidbodyInterpolation.Interpolate;
@@ -101,11 +107,27 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 _rotationInput += new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));                
             }
 
-            _scrollWheelInput += transform.forward * (Input.GetAxis("Mouse ScrollWheel") * _scrollWheelSensitivity);
+            var direction = Input.GetAxis("Mouse ScrollWheel") * -1;
+        
+            //Optional Keyboard inputs
+            if (Input.GetKeyDown(KeyCode.T))
+                direction = -0.1f;
+            else if (Input.GetKeyDown(KeyCode.G))
+                direction = 0.1f;
+
+            if (Mathf.Abs(direction) > 0 && CheckObjectDistance(direction))
+            {
+                distanceChanged = true;
+                _scrollWheelInput = transform.forward * _scrollWheelSensitivity * direction;
+            } 
+            else
+            {
+                _scrollWheelInput = _zeroVector3;
+            }
         }
 	}
-   
-    void FixedUpdate()
+
+    private void FixedUpdate()
     {
         if (_grabbedRigidbody)
         {
@@ -129,7 +151,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // Calculate object's center position based on the offset we stored
             // NOTE: We need to convert the local-space point back to world coordinates
             // Get the destination point for the point on the object we grabbed
-            var holdPoint           = ray.GetPoint(_currentGrabDistance);
+            var holdPoint           = ray.GetPoint(_currentGrabDistance) - _scrollWheelInput;
             var centerDestination   = holdPoint - _grabbedRigidbody.transform.TransformVector(_hitOffsetLocal);
 
 #if UNITY_EDITOR
@@ -141,10 +163,17 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // Calculate force
             var force = toDestination / Time.fixedDeltaTime * 0.8f;
 
-            force += _scrollWheelInput;
+            //force += _scrollWheelInput;
             // Remove any existing velocity and add force to move to final position
             _grabbedRigidbody.velocity = _zeroVector3;
             _grabbedRigidbody.AddForce(force, ForceMode.VelocityChange);
+
+            //We need to recalculte the grabbed distance as the object distance from the player has been changed
+            if (distanceChanged)
+            {
+                distanceChanged = false;
+                _currentGrabDistance = Vector3.Distance(ray.origin, holdPoint);
+            }
         }
     }
 
@@ -152,5 +181,24 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Ray CenterRay()
     {
         return Camera.main.ViewportPointToRay(_oneVector3 * 0.5f);
+    }
+
+    //Check distance is within range when moving object with the scroll wheel
+    private bool CheckObjectDistance(float direction)
+    {
+        var pointA = transform.position;
+        var pointB = _grabbedRigidbody.position;
+
+        var distance = Vector3.Distance(pointA, pointB);
+
+        if (direction < 0)
+            return distance <= _maxGrabDistance;
+
+        if (direction > 0)
+            return distance >= _minObjectDistance;
+
+        return false;
+
+        
     }
 }
