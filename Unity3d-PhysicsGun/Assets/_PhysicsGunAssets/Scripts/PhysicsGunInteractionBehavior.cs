@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityStandardAssets.Characters.FirstPerson;
@@ -44,15 +45,32 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Vector3 _zeroVector3 = Vector3.zero;
     private Vector3 _oneVector3  = Vector3.one;
     private Vector3 _zeroVector2 = Vector2.zero;
-    
+
+    private LineRenderer _lineRenderer;
+    [Header("Line Renderer Settings")]
+    [SerializeField]
+    private int ArcResolution = 12;
+    private Vector3[] _inputPoints;
+
+    private bool _justReleased;
+    private bool _wasKinematic;
+
     private void Start()
     {
         _firstPersonController = GetComponent<FirstPersonController>();
 
         if(_firstPersonController == null)
             Debug.LogError($"{nameof(_firstPersonController)} is null and the gravity gun won't work properly!", this);
+
+        _lineRenderer = GetComponent<LineRenderer>();
+
+        if (_lineRenderer == null)
+            _lineRenderer = gameObject.AddComponent<LineRenderer>();
+
+        _inputPoints = new Vector3[ArcResolution];
+        _lineRenderer.positionCount = ArcResolution;
     }
-    
+
 	private void Update ()
     {
         _firstPersonController.enabled = !Input.GetKey(KeyCode.R); 
@@ -61,22 +79,21 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         {
             // We are not holding the mouse button. Release the object and return before checking for a new one
             if (_grabbedRigidbody != null)
-            {
-                // Reset the rigidbody to how it was before we grabbed it
-                _grabbedRigidbody.interpolation = _initialInterpolationSetting;
-                _grabbedRigidbody.freezeRotation = false;
-                _grabbedRigidbody = null;
-                _scrollWheelInput = _zeroVector3;
+            {                
+                ReleaseObject();
             }
+
+            _justReleased = false;
             return;
         }
 
-        if (_grabbedRigidbody == null)
+        if (_grabbedRigidbody == null && !_justReleased)
         {
+
             // We are not holding an object, look for one to pick up
             Ray ray = CenterRay();
             RaycastHit hit;
-
+                       
             //Just so These aren't included in a build
 #if UNITY_EDITOR
             Debug.DrawRay(ray.origin, ray.direction * _maxGrabDistance, Color.blue, 0.01f);
@@ -84,10 +101,12 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             if (Physics.Raycast(ray, out hit, _maxGrabDistance))
             {
                 // Don't pick up kinematic rigidbodies (they can't move)
-                if (hit.rigidbody != null && !hit.rigidbody.isKinematic)
+                if (hit.rigidbody != null /*&& !hit.rigidbody.isKinematic*/)
                 {
                     // Track rigidbody's initial information
                     _grabbedRigidbody                   = hit.rigidbody;
+                    _wasKinematic                       = _grabbedRigidbody.isKinematic;
+                    _grabbedRigidbody.isKinematic       = false;
                     _grabbedRigidbody.freezeRotation    = true;
                     _initialInterpolationSetting        = _grabbedRigidbody.interpolation;
                     _rotationDifference                 = Quaternion.Inverse(transform.rotation) * _grabbedRigidbody.rotation;
@@ -96,6 +115,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
                     // Set rigidbody's interpolation for proper collision detection when being moved by the player
                     _grabbedRigidbody.interpolation     = RigidbodyInterpolation.Interpolate;
+
+                    _lineRenderer.enabled = true;                    
                 }
             }
         }
@@ -107,7 +128,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 _rotationInput += new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));                
             }
 
-            var direction = Input.GetAxis("Mouse ScrollWheel") * -1;
+            var direction = Input.GetAxis("Mouse ScrollWheel");
         
             //Optional Keyboard inputs
             if (Input.GetKeyDown(KeyCode.T))
@@ -123,6 +144,16 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             else
             {
                 _scrollWheelInput = _zeroVector3;
+            }
+
+            if(Input.GetMouseButtonDown(1))
+            {
+                //To prevent warnings in the inpector
+                _grabbedRigidbody.collisionDetectionMode = !_wasKinematic ? CollisionDetectionMode.ContinuousSpeculative : CollisionDetectionMode.Continuous;
+                _grabbedRigidbody.isKinematic = _wasKinematic = !_wasKinematic;
+               
+                _justReleased = true;
+                ReleaseObject();
             }
         }
 	}
@@ -141,7 +172,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             var userRotation = Input.GetKey(KeyCode.R);
 
             // Rotate the object to remain consistent with any changes in player's rotation
-            _grabbedRigidbody.MoveRotation(userRotation ? intentionalRotation : relativeToPlayerRotation);            
+            _grabbedRigidbody.MoveRotation(userRotation ? intentionalRotation : relativeToPlayerRotation);
 
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
             _grabbedRigidbody.angularVelocity   = _zeroVector3;
@@ -151,7 +182,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // Calculate object's center position based on the offset we stored
             // NOTE: We need to convert the local-space point back to world coordinates
             // Get the destination point for the point on the object we grabbed
-            var holdPoint           = ray.GetPoint(_currentGrabDistance) - _scrollWheelInput;
+            var holdPoint           = ray.GetPoint(_currentGrabDistance) + _scrollWheelInput;
             var centerDestination   = holdPoint - _grabbedRigidbody.transform.TransformVector(_hitOffsetLocal);
 
 #if UNITY_EDITOR
@@ -161,7 +192,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             var toDestination = centerDestination - _grabbedRigidbody.transform.position;
 
             // Calculate force
-            var force = toDestination / Time.fixedDeltaTime * 0.8f;
+            var force = (toDestination / Time.fixedDeltaTime * 0.8f) / _grabbedRigidbody.mass;
 
             //force += _scrollWheelInput;
             // Remove any existing velocity and add force to move to final position
@@ -174,7 +205,27 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 distanceChanged = false;
                 _currentGrabDistance = Vector3.Distance(ray.origin, holdPoint);
             }
+
+            //_lineRenderer.SetPosition(1, _grabbedRigidbody.transform.TransformPoint(_hitOffsetLocal));
+            RenderArc(transform.position, _grabbedRigidbody.transform.TransformPoint(_hitOffsetLocal), holdPoint);
         }
+    }
+
+    //Create Arc on the line renderer
+    private void RenderArc(Vector3 startpont, Vector3 endPoint, Vector3 midPoint)
+    { 
+        _lineRenderer.SetPositions(GetArcPoints(startpont, midPoint, endPoint));
+    }
+
+    public Vector3[] GetArcPoints(Vector3 a, Vector3 b, Vector3 c)
+    {
+        for (int i = 0; i < ArcResolution; i++)
+        {
+            var t =  (float)(i) / (ArcResolution);
+            _inputPoints[i] = Vector3.Lerp(Vector3.Lerp(a, b, t), Vector3.Lerp(b, c, t), t);
+        }
+
+        return _inputPoints;
     }
 
     /// <returns>Ray from center of the main camera's viewport forward</returns>
@@ -191,14 +242,27 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
         var distance = Vector3.Distance(pointA, pointB);
 
-        if (direction < 0)
+        if (direction > 0)
             return distance <= _maxGrabDistance;
 
-        if (direction > 0)
+        if (direction < 0)
             return distance >= _minObjectDistance;
 
         return false;
 
         
+    }
+
+    private void ReleaseObject()
+    {
+        // Reset the rigidbody to how it was before we grabbed it
+        _grabbedRigidbody.isKinematic               = _wasKinematic;
+        _grabbedRigidbody.interpolation             = _initialInterpolationSetting;
+        _grabbedRigidbody.freezeRotation            = false;
+        _grabbedRigidbody                           = null;
+        _scrollWheelInput                           = _zeroVector3;
+        _lineRenderer.enabled                       = false;
+        //Reset the line points so we do not get a brief flash or the previous line
+        _lineRenderer.SetPositions(GetArcPoints(_zeroVector3, _zeroVector3, _zeroVector3));
     }
 }
