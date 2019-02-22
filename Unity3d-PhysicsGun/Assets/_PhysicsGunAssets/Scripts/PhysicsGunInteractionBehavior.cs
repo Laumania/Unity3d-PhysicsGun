@@ -226,7 +226,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             var toDestination = centerDestination - _grabbedRigidbody.transform.position;
 
             // Calculate force
-            var force = (toDestination / Time.fixedDeltaTime * 0.8f) / _grabbedRigidbody.mass;
+            var force = (toDestination / Time.fixedDeltaTime * 0.1f) / _grabbedRigidbody.mass;
 
             //force += _scrollWheelInput;
             // Remove any existing velocity and add force to move to final position
