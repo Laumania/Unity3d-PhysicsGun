@@ -7,78 +7,86 @@ using UnityStandardAssets.Characters.FirstPerson;
 /* Original script "Gravity Gun": https://pastebin.com/w1G8m3dH
  * Original author: Jake Perry, reddit.com/user/nandos13
  * 
- * February 2019, above script was used as the starting point of this current script.
- * This improved script can be found here: https://github.com/Laumania/Unity3d-PhysicsGun
- * Repository created and script enhanced by Mads Laumann, http://laumania.net
+ * February 2019, above script was used as the starting point of below script.
+ * https://github.com/Laumania/Unity3d-PhysicsGun
+ * Repository created and script enhanced by: 
+ * Mads Laumann, https://github.com/laumania
+ * WarmedxMints, https://github.com/WarmedxMints
  */
+
+ [RequireComponent(typeof(LineRenderer))]
 public class PhysicsGunInteractionBehavior : MonoBehaviour
 {
     /// <summary>For easy enable/disable mouse look when rotating objects, we store this reference</summary>
     private FirstPersonController   _firstPersonController;
+
     /// <summary>The rigidbody we are currently holding</summary>
     private Rigidbody               _grabbedRigidbody;
+
     /// <summary>The offset vector from the object's position to hit point, in local space</summary>
     private Vector3                 _hitOffsetLocal;
+
     /// <summary>The distance we are holding the object at</summary>
     private float                   _currentGrabDistance;
+
     /// <summary>The interpolation state when first grabbed</summary>
     private RigidbodyInterpolation  _initialInterpolationSetting;
+
     /// <summary>The difference between player & object rotation, updated when picked up or when rotated by the player</summary>
     private Quaternion              _rotationDifference;
+
     /// <summary>Tracks player input to rotate current object. Used and reset every fixedupdate call</summary>
-    private Vector2                 _rotationInput = Vector2.zero;
+    private Vector2                 _rotationInput          = Vector2.zero;
     private float                   _rotationSenstivity;
     [Header("Rotation Settings")]
     [SerializeField]
-    private float                   _freeRotationSens = 1.5f;
+    private float                   _freeRotationSens       = 1.5f;
     [SerializeField]
-    private float                   _snappedRotationSens  = 12.5f;
+    private float                   _snappedRotationSens    = 12.5f;
     /// <summary>The maximum distance at which a new object can be picked up</summary>
-    private const float             _maxGrabDistance = 50;
+    private const float             _maxGrabDistance        = 50;
 
     //ScrollWheel ObjectMovement
-    private Vector3 _scrollWheelInput = Vector3.zero;
+    private Vector3                 _scrollWheelInput       = Vector3.zero;
 
     [Header("Scroll Wheel Object Movement"), Space(5)]
     [SerializeField]
-    private float _scrollWheelSensitivity = 5f;
+    private float                   _scrollWheelSensitivity = 5f;
     //The min distance the object can be from the player.  The max distance will be _maxGrabDistance;
     [SerializeField]
-    private float _minObjectDistance = 2.5f;
-    private bool distanceChanged;
+    private float                   _minObjectDistance      = 2.5f;
+    private bool                    _distanceChanged;
 
     //Vector3.Zero and Vector2.zero create a new Vector3 each time they are called so these simply save that process and a small amount of cpu runtime.
-    private Vector3 _zeroVector3 = Vector3.zero;
-    private Vector3 _oneVector3  = Vector3.one;
-    private Vector3 _zeroVector2 = Vector2.zero;
+    private Vector3                 _zeroVector3            = Vector3.zero;
+    private Vector3                 _oneVector3             = Vector3.one;
+    private Vector3                 _zeroVector2            = Vector2.zero;
 
     [Header("Line Renderer Settings"), Space(5)]
     [SerializeField]
-    private Vector2 uvAnimationRate = new Vector2(1.0f, 0.0f);
-    Vector2 uvOffset = Vector2.zero;
-    private int _mainTex = Shader.PropertyToID("_MainTex");
+    private Vector2                 _uvAnimationRate        = new Vector2(1.0f, 0.0f);
+    private Vector2                 _uvOffset               = Vector2.zero;
+    private int                     _mainTex                = Shader.PropertyToID("_MainTex");
     [SerializeField]
-    private int ArcResolution = 12;
-    private Vector3[] _inputPoints;
-    private LineRenderer _lineRenderer;
+    private int                     _arcResolution          = 12;
+    private Vector3[]               _inputPoints;
+    private LineRenderer            _lineRenderer;
 
-    private bool _justReleased;
-    private bool _wasKinematic;
+    private bool                    _justReleased;
+    private bool                    _wasKinematic;
 
     private void Start()
     {
         _firstPersonController = GetComponent<FirstPersonController>();
-
         if(_firstPersonController == null)
             Debug.LogError($"{nameof(_firstPersonController)} is null and the gravity gun won't work properly!", this);
-
+        
         _lineRenderer = GetComponent<LineRenderer>();
-
         if (_lineRenderer == null)
-            _lineRenderer = gameObject.AddComponent<LineRenderer>();
+            Debug.LogError($"{nameof(_lineRenderer)} is null and this script won't work properly without it!", this);
 
-        _inputPoints = new Vector3[ArcResolution];
-        _lineRenderer.positionCount = ArcResolution;
+        _inputPoints                = new Vector3[_arcResolution];
+        _lineRenderer.positionCount = _arcResolution;
     }
 
 	private void Update ()
@@ -149,7 +157,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
             if (Mathf.Abs(direction) > 0 && CheckObjectDistance(direction))
             {
-                distanceChanged = true;
+                _distanceChanged = true;
                 _scrollWheelInput = transform.forward * _scrollWheelSensitivity * direction;
             } 
             else
@@ -177,17 +185,16 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             Ray ray = CenterRay();
 
             // Apply any intentional rotation input made by the player & clear tracked input
-            var intentionalRotation = Quaternion.AngleAxis(_rotationInput.y, transform.right) * Quaternion.AngleAxis(-_rotationInput.x, transform.up) * _grabbedRigidbody.rotation;
-            var relativeToPlayerRotation = transform.rotation * _rotationDifference;
+            var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.y, transform.right) * Quaternion.AngleAxis(-_rotationInput.x, transform.up) * _grabbedRigidbody.rotation;
+            var relativeToPlayerRotation    = transform.rotation * _rotationDifference;
 
             var userRotation = Input.GetKey(KeyCode.R);
 
             if (userRotation && Input.GetKey(KeyCode.LeftShift))
             {
                 _rotationSenstivity = _snappedRotationSens;
-                var currentRot = intentionalRotation; // _grabbedRigidbody.rotation;
-
-                var newRot = currentRot.eulerAngles;
+                var currentRot      = intentionalRotation;
+                var newRot          = currentRot.eulerAngles;
 
                 newRot.x = Mathf.Round(newRot.x / 45) * 45;
                 newRot.y = Mathf.Round(newRot.y / 45) * 45;
@@ -227,23 +234,22 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             _grabbedRigidbody.AddForce(force, ForceMode.VelocityChange);
 
             //We need to recalculte the grabbed distance as the object distance from the player has been changed
-            if (distanceChanged)
+            if (_distanceChanged)
             {
-                distanceChanged = false;
+                _distanceChanged = false;
                 _currentGrabDistance = Vector3.Distance(ray.origin, holdPoint);
             }
 
-            //_lineRenderer.SetPosition(1, _grabbedRigidbody.transform.TransformPoint(_hitOffsetLocal));
             RenderArc(transform.position, _grabbedRigidbody.transform.TransformPoint(_hitOffsetLocal), holdPoint);
         }
     }
 
     private void LateUpdate()
     {
-        uvOffset -= (uvAnimationRate * Time.deltaTime);
+        _uvOffset -= (_uvAnimationRate * Time.deltaTime);
         if (_lineRenderer.enabled)
         {
-            _lineRenderer.material.SetTextureOffset(_mainTex, uvOffset);
+            _lineRenderer.material.SetTextureOffset(_mainTex, _uvOffset);
         }
     }
 
@@ -255,9 +261,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
     public Vector3[] GetArcPoints(Vector3 a, Vector3 b, Vector3 c)
     {
-        for (int i = 0; i < ArcResolution; i++)
+        for (int i = 0; i < _arcResolution; i++)
         {
-            var t =  (float)(i) / (ArcResolution);
+            var t           =  (float)(i) / (_arcResolution);
             _inputPoints[i] = Vector3.Lerp(Vector3.Lerp(a, b, t), Vector3.Lerp(b, c, t), t);
         }
 
@@ -273,10 +279,10 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     //Check distance is within range when moving object with the scroll wheel
     private bool CheckObjectDistance(float direction)
     {
-        var pointA = transform.position;
-        var pointB = _grabbedRigidbody.position;
+        var pointA      = transform.position;
+        var pointB      = _grabbedRigidbody.position;
 
-        var distance = Vector3.Distance(pointA, pointB);
+        var distance    = Vector3.Distance(pointA, pointB);
 
         if (direction > 0)
             return distance <= _maxGrabDistance;
@@ -285,8 +291,6 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             return distance >= _minObjectDistance;
 
         return false;
-
-        
     }
 
     private void ReleaseObject()
