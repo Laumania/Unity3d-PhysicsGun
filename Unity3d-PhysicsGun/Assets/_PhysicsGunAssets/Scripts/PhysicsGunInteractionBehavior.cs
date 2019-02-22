@@ -71,6 +71,10 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private int                     _arcResolution          = 12;
     private Vector3[]               _inputPoints;
     private LineRenderer            _lineRenderer;
+    [SerializeField]
+    private GameObject              _laserStartPoint;
+    [SerializeField]
+    private GameObject              _laserGlowEndPoint;
 
     private bool                    _justReleased;
     private bool                    _wasKinematic;
@@ -87,10 +91,13 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
         _inputPoints                = new Vector3[_arcResolution];
         _lineRenderer.positionCount = _arcResolution;
+        
+        _laserStartPoint.SetActive(false);
     }
 
 	private void Update ()
     {
+        _laserGlowEndPoint.SetActive(_lineRenderer.enabled);
         _firstPersonController.enabled = !Input.GetKey(KeyCode.R); 
 
         if (!Input.GetMouseButton(0))
@@ -256,6 +263,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     //Create Arc on the line renderer
     private void RenderArc(Vector3 startpont, Vector3 endPoint, Vector3 midPoint)
     { 
+        _laserGlowEndPoint.transform.position = endPoint * 0.99f;
         _lineRenderer.SetPositions(GetArcPoints(startpont, midPoint, endPoint));
     }
 
