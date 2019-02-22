@@ -4,7 +4,7 @@ The goal of this sample is to be an implementation of a "Physics Gun", that mimi
 [Video about the creation of this repo, thoughts and reasons behind can be seen here.](https://www.youtube.com/watch?v=HnnhU2hlHkg)
 
 # Get started
-["PhysicsGunInteractionBehavior.cs" is the script you are looking for.](Unity3d-PhysicsGun/Assets/_PhysicsGunAssets/Scripts/PhysicsGunInteractionBehavior.cs)
+["PhysicsGunInteractionBehavior.cs"](Unity3d-PhysicsGun/Assets/_PhysicsGunAssets/Scripts/PhysicsGunInteractionBehavior.cs) is the script you are looking for.
 This is the script that does most of the actual logic, however, we encourage you to download the entire project and look at the "PhysicsGunSampleScene". 
 
 Originally the "GravityGun" script in this repo, is based on this script: https://pastebin.com/w1G8m3dH
