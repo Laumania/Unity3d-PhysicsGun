@@ -168,8 +168,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             if(Input.GetMouseButtonDown(1))
             {
                 //To prevent warnings in the inpector
-                _grabbedRigidbody.collisionDetectionMode = !_wasKinematic ? CollisionDetectionMode.ContinuousSpeculative : CollisionDetectionMode.Continuous;
-                _grabbedRigidbody.isKinematic = _wasKinematic = !_wasKinematic;
+                _grabbedRigidbody.collisionDetectionMode    = !_wasKinematic ? CollisionDetectionMode.ContinuousSpeculative : CollisionDetectionMode.Continuous;
+                _grabbedRigidbody.isKinematic               = _wasKinematic = !_wasKinematic;
                
                 _justReleased = true;
                 ReleaseObject();
@@ -226,7 +226,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             var toDestination = centerDestination - _grabbedRigidbody.transform.position;
 
             // Calculate force
-            var force = (toDestination / Time.fixedDeltaTime * 0.1f) / _grabbedRigidbody.mass;
+            var force = (toDestination / Time.fixedDeltaTime * 0.3f) / _grabbedRigidbody.mass;
 
             //force += _scrollWheelInput;
             // Remove any existing velocity and add force to move to final position
