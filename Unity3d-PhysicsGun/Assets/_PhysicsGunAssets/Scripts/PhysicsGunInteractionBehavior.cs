@@ -26,14 +26,20 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     /// <summary>The difference between player & object rotation, updated when picked up or when rotated by the player</summary>
     private Quaternion              _rotationDifference;
     /// <summary>Tracks player input to rotate current object. Used and reset every fixedupdate call</summary>
-    private Vector2                 _rotationInput;
+    private Vector2                 _rotationInput = Vector2.zero;
+    private float                   _rotationSenstivity;
+    [Header("Rotation Settings")]
+    [SerializeField]
+    private float                   _freeRotationSens = 1.5f;
+    [SerializeField]
+    private float                   _snappedRotationSens  = 12.5f;
     /// <summary>The maximum distance at which a new object can be picked up</summary>
     private const float             _maxGrabDistance = 50;
 
     //ScrollWheel ObjectMovement
     private Vector3 _scrollWheelInput = Vector3.zero;
 
-    [Header("Scroll Wheel Object Movement")]
+    [Header("Scroll Wheel Object Movement"), Space(5)]
     [SerializeField]
     private float _scrollWheelSensitivity = 5f;
     //The min distance the object can be from the player.  The max distance will be _maxGrabDistance;
@@ -46,11 +52,15 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Vector3 _oneVector3  = Vector3.one;
     private Vector3 _zeroVector2 = Vector2.zero;
 
-    private LineRenderer _lineRenderer;
-    [Header("Line Renderer Settings")]
+    [Header("Line Renderer Settings"), Space(5)]
+    [SerializeField]
+    private Vector2 uvAnimationRate = new Vector2(1.0f, 0.0f);
+    Vector2 uvOffset = Vector2.zero;
+    private int _mainTex = Shader.PropertyToID("_MainTex");
     [SerializeField]
     private int ArcResolution = 12;
     private Vector3[] _inputPoints;
+    private LineRenderer _lineRenderer;
 
     private bool _justReleased;
     private bool _wasKinematic;
@@ -125,7 +135,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // We are already holding an object, listen for rotation input
             if (Input.GetKey(KeyCode.R))
             {
-                _rotationInput += new Vector2(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));                
+                _rotationInput.x = Input.GetAxisRaw("Mouse X") * _rotationSenstivity;
+                _rotationInput.y = Input.GetAxisRaw("Mouse Y") * _rotationSenstivity;
             }
 
             var direction = Input.GetAxis("Mouse ScrollWheel");
@@ -171,9 +182,25 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
             var userRotation = Input.GetKey(KeyCode.R);
 
-            // Rotate the object to remain consistent with any changes in player's rotation
-            _grabbedRigidbody.MoveRotation(userRotation ? intentionalRotation : relativeToPlayerRotation);
+            if (userRotation && Input.GetKey(KeyCode.LeftShift))
+            {
+                _rotationSenstivity = _snappedRotationSens;
+                var currentRot = intentionalRotation; // _grabbedRigidbody.rotation;
 
+                var newRot = currentRot.eulerAngles;
+
+                newRot.x = Mathf.Round(newRot.x / 45) * 45;
+                newRot.y = Mathf.Round(newRot.y / 45) * 45;
+                newRot.z = Mathf.Round(newRot.z / 45) * 45;
+
+                _grabbedRigidbody.MoveRotation(Quaternion.Euler(newRot)); 
+            }
+            else
+            {
+                _rotationSenstivity = _freeRotationSens;
+                //Rotate the object to remain consistent with any changes in player's rotation
+                _grabbedRigidbody.MoveRotation(userRotation ? intentionalRotation : relativeToPlayerRotation);
+            }
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
             _grabbedRigidbody.angularVelocity   = _zeroVector3;
             _rotationInput                      = _zeroVector2;
@@ -208,6 +235,15 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
             //_lineRenderer.SetPosition(1, _grabbedRigidbody.transform.TransformPoint(_hitOffsetLocal));
             RenderArc(transform.position, _grabbedRigidbody.transform.TransformPoint(_hitOffsetLocal), holdPoint);
+        }
+    }
+
+    private void LateUpdate()
+    {
+        uvOffset -= (uvAnimationRate * Time.deltaTime);
+        if (_lineRenderer.enabled)
+        {
+            _lineRenderer.material.SetTextureOffset(_mainTex, uvOffset);
         }
     }
 
