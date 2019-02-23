@@ -248,7 +248,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                         _lockedRot.z = 0;
                     }
 
-                    q =  Quaternion.AngleAxis(_lockedRot.z, Vector3.forward) * Quaternion.AngleAxis(_lockedRot.y, Vector3.right) * Quaternion.AngleAxis(_lockedRot.x, Vector3.up) * q;
+                    q =  Quaternion.AngleAxis(-_lockedRot.z, Vector3.forward) * Quaternion.AngleAxis(_lockedRot.y, Vector3.right) * Quaternion.AngleAxis(-_lockedRot.x, Vector3.up) * q;
 
                     _grabbedRigidbody.rotation = q;
 
