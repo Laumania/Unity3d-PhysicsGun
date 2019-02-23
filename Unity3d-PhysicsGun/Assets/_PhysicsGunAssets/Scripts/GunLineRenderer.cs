@@ -77,12 +77,17 @@ public class GunLineRenderer : MonoBehaviour
         _lineRenderer.enabled = true;
         _objectToHightlight = objectToHighlight;
 
-        var outline = _objectToHightlight.GetComponent<Outline>();
+        var renderers = _objectToHightlight.GetComponentsInChildren<Renderer>();
 
-        if(outline == null)
-            outline = _objectToHightlight.AddComponent<Outline>();
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            var outline = renderers[i].GetComponent<Outline>();
 
-         _outlineEffect.AddOutline(outline); 
+            if (outline == null)
+                outline = renderers[i].gameObject.AddComponent<Outline>();
+
+            _outlineEffect.AddOutline(outline);
+        }
 
         _attachEffect.gameObject.SetActive(true);
     }
@@ -94,12 +99,19 @@ public class GunLineRenderer : MonoBehaviour
 
         _lineRenderer.SetPositions(_inputPoints);
 
-        var outline = _objectToHightlight.GetComponent<Outline>();
+        var renderers = _objectToHightlight.GetComponentsInChildren<Renderer>();
 
-        _outlineEffect.RemoveOutline(outline);       
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            var outline = renderers[i].GetComponent<Outline>();
 
-        Destroy(outline);
+            if (outline != null)
+            {
+                _outlineEffect.RemoveOutline(outline);
 
+                Destroy(outline);
+            }
+        }
         _objectToHightlight = null;
 
         _attachEffect.gameObject.SetActive(false);

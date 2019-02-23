@@ -148,6 +148,17 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
                 var increaseSens    = Input.GetKey(KeyCode.LeftControl) ? 2.5f : 1f;
 
+                if(Input.GetKeyDown(KeyCode.LeftShift))
+                {
+                    var newRot = _grabbedRigidbody.transform.rotation.eulerAngles;
+
+                    newRot.x = Mathf.Round(newRot.x / _snapRotationDegrees) * _snapRotationDegrees;
+                    newRot.y = Mathf.Round(newRot.y / _snapRotationDegrees) * _snapRotationDegrees;
+                    newRot.z = Mathf.Round(newRot.z / _snapRotationDegrees) * _snapRotationDegrees;
+
+                    _grabbedRigidbody.MoveRotation(Quaternion.Euler(newRot));
+                }
+
                 _rotationInput.x    = rotateZ ? 0f : Input.GetAxisRaw("Mouse X") * _rotationSenstivity * increaseSens;
                 _rotationInput.y    = Input.GetAxisRaw("Mouse Y") * _rotationSenstivity * increaseSens;
                 _rotationInput.z    = rotateZ ? Input.GetAxisRaw("Mouse X") * _rotationSenstivity * increaseSens : 0f;
@@ -195,28 +206,28 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             Ray ray = CenterRay();
 
             // Apply any intentional rotation input made by the player & clear tracked input
-            var intentionalRotation         = Quaternion.AngleAxis(-_rotationInput.z, transform.forward) * Quaternion.AngleAxis(_rotationInput.y, transform.right) * Quaternion.AngleAxis(-_rotationInput.x, transform.up) *  _grabbedRigidbody.rotation;
+            var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.z, transform.forward) * Quaternion.AngleAxis(_rotationInput.y, transform.right) * Quaternion.AngleAxis(-_rotationInput.x, transform.up) *  _grabbedRigidbody.rotation;
             var relativeToPlayerRotation    = transform.rotation * _rotationDifference;
 
             if (_userRotation && _snapRotation)
             {
                 //Add mouse movement to vector so we can measure the amount of movement
-                _lockedRot += _rotationInput;
-
-                var q = _grabbedRigidbody.rotation;                 
+                _lockedRot += _rotationInput;    
 
                 //If the mouse has moved far enough to rotate the snapped object
                 if (Mathf.Abs(_lockedRot.x) > _snappedRotationSens || Mathf.Abs(_lockedRot.y) > _snappedRotationSens || Mathf.Abs(_lockedRot.z) > _snappedRotationSens)
                 {
-                    for(var i = 0; i < 3; i ++)
+                    var rot = _grabbedRigidbody.rotation.eulerAngles;
+
+                    for (var i = 0; i < 3; i++)
                     {
                         if (_lockedRot[i] > _snappedRotationSens)
                         {
-                            _lockedRot[i] = _snapRotationDegrees;
+                            _lockedRot[i] += _snapRotationDegrees;
                         }
                         else if (_lockedRot[i] < -_snappedRotationSens)
                         {
-                            _lockedRot[i] = -_snapRotationDegrees;
+                            _lockedRot[i] += -_snapRotationDegrees;
                         }
                         else
                         {
@@ -224,37 +235,19 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                         }
                     }
 
-                    q =  Quaternion.AngleAxis(-_lockedRot.z, Vector3.forward) * Quaternion.AngleAxis(_lockedRot.y, Vector3.right) * Quaternion.AngleAxis(-_lockedRot.x, Vector3.up) * q;
+                    var q = Quaternion.AngleAxis(_lockedRot.z, _grabbedRigidbody.transform.forward) * Quaternion.AngleAxis(_lockedRot.y, _grabbedRigidbody.transform.right) * Quaternion.AngleAxis(-_lockedRot.x, _grabbedRigidbody.transform.up) * _grabbedRigidbody.rotation;
 
-                    _grabbedRigidbody.rotation = q;
+                    var newRot = q.eulerAngles;
+
+                    newRot.x = Mathf.Round(newRot.x / _snapRotationDegrees) * _snapRotationDegrees;
+                    newRot.y = Mathf.Round(newRot.y / _snapRotationDegrees) * _snapRotationDegrees;
+                    newRot.z = Mathf.Round(newRot.z / _snapRotationDegrees) * _snapRotationDegrees;
+
+                    _grabbedRigidbody.MoveRotation(Quaternion.Euler(newRot));        
 
                     _lockedRot = _zeroVector2;
                 }
-                else
-                {
-                    //Lock rotation to the nearest _snapRotationDegrees degree value in worldspace
 
-                    q.x /= q.w;
-                    q.y /= q.w;
-                    q.z /= q.w;
-                    q.w = 1.0f;
-
-                    var angleX = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.x);
-                    var angleY = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.y);
-                    var angleZ = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.z);
-
-                    angleX = Mathf.Round(angleX / _snapRotationDegrees) * _snapRotationDegrees;
-                    angleY = Mathf.Round(angleY / _snapRotationDegrees) * _snapRotationDegrees;
-                    angleZ = Mathf.Round(angleZ / _snapRotationDegrees) * _snapRotationDegrees;
-
-                    //Debug.Log("X = " + angleX + " Y = " + angleY + " Z = " + angleZ);
-
-                    q.x = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleX);
-                    q.y = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleY);
-                    q.z = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleZ);
-
-                    _grabbedRigidbody.MoveRotation(q.normalized);
-                }
             }
             else
             {                
