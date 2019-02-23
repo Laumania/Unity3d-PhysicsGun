@@ -7,6 +7,9 @@ The goal of this sample is to be an implementation of a "Physics Gun", that mimi
 ["PhysicsGunInteractionBehavior.cs"](Unity3d-PhysicsGun/Assets/_PhysicsGunAssets/Scripts/PhysicsGunInteractionBehavior.cs) is the script you are looking for.
 This is the script that does most of the actual logic, however, we encourage you to download the entire project and look at the "PhysicsGunSampleScene". 
 
+Todo: Write guide
+- Needed for outline to work https://github.com/cakeslice/Outline-Effect
+
 Originally the "GravityGun" script in this repo, is based on this script: https://pastebin.com/w1G8m3dH
 
 # Contribute
