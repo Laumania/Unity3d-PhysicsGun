@@ -14,7 +14,7 @@ using UnityStandardAssets.Characters.FirstPerson;
  * WarmedxMints, https://github.com/WarmedxMints
  */
 
- [RequireComponent(typeof(LineRenderer))]
+[RequireComponent(typeof(GunLineRenderer))]
 public class PhysicsGunInteractionBehavior : MonoBehaviour
 {
     /// <summary>For easy enable/disable mouse look when rotating objects, we store this reference</summary>
@@ -46,6 +46,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     /// <summary>The maximum distance at which a new object can be picked up</summary>
     private const float             _maxGrabDistance        = 50;
 
+    private bool                    _userRotation;
+    private bool                    _snapRotation;
+
     //ScrollWheel ObjectMovement
     private Vector3                 _scrollWheelInput       = Vector3.zero;
 
@@ -62,18 +65,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Vector3                 _oneVector3             = Vector3.one;
     private Vector3                 _zeroVector2            = Vector2.zero;
 
-    [Header("Line Renderer Settings"), Space(5)]
-    [SerializeField]
-    private Vector2                 _uvAnimationRate        = new Vector2(1.0f, 0.0f);
-    private Vector2                 _uvOffset               = Vector2.zero;
-    private int                     _mainTex                = Shader.PropertyToID("_MainTex");
-    [SerializeField]
-    private int                     _arcResolution          = 12;
-    private Vector3[]               _inputPoints;
-    private LineRenderer            _lineRenderer;
-    [SerializeField]
-    private GameObject              _laserStartPoint;
-    [SerializeField]
+    private GunLineRenderer _lineRendererController;
+
     private GameObject              _laserGlowEndPoint;
 
     private bool                    _justReleased;
@@ -84,21 +77,15 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         _firstPersonController = GetComponent<FirstPersonController>();
         if(_firstPersonController == null)
             Debug.LogError($"{nameof(_firstPersonController)} is null and the gravity gun won't work properly!", this);
-        
-        _lineRenderer = GetComponent<LineRenderer>();
-        if (_lineRenderer == null)
-            Debug.LogError($"{nameof(_lineRenderer)} is null and this script won't work properly without it!", this);
 
-        _inputPoints                = new Vector3[_arcResolution];
-        _lineRenderer.positionCount = _arcResolution;
-        
-        _laserStartPoint.SetActive(false);
+        _lineRendererController = GetComponent<GunLineRenderer>();
     }
 
 	private void Update ()
     {
-        _laserGlowEndPoint.SetActive(_lineRenderer.enabled);
-        _firstPersonController.enabled = !Input.GetKey(KeyCode.R); 
+        _userRotation = Input.GetKey(KeyCode.R);
+
+        _firstPersonController.enabled = !_userRotation;
 
         if (!Input.GetMouseButton(0))
         {
@@ -141,7 +128,11 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     // Set rigidbody's interpolation for proper collision detection when being moved by the player
                     _grabbedRigidbody.interpolation     = RigidbodyInterpolation.Interpolate;
 
-                    _lineRenderer.enabled = true;                    
+
+                    if (_lineRendererController != null)
+                        _lineRendererController.StartLineRenderer(_grabbedRigidbody.gameObject);
+
+                    Debug.DrawRay(hit.point, hit.normal * 10f, Color.red, 10f);
                 }
             }
         }
@@ -150,8 +141,13 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // We are already holding an object, listen for rotation input
             if (Input.GetKey(KeyCode.R))
             {
+                _snapRotation    = Input.GetKey(KeyCode.LeftShift);
                 _rotationInput.x = Input.GetAxisRaw("Mouse X") * _rotationSenstivity;
                 _rotationInput.y = Input.GetAxisRaw("Mouse Y") * _rotationSenstivity;
+            }
+            else
+            {
+                _snapRotation = false;
             }
 
             var direction = Input.GetAxis("Mouse ScrollWheel");
@@ -200,14 +196,37 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             if (userRotation && Input.GetKey(KeyCode.LeftShift))
             {
                 _rotationSenstivity = _snappedRotationSens;
-                var currentRot      = intentionalRotation;
-                var newRot          = currentRot.eulerAngles;
 
-                newRot.x = Mathf.Round(newRot.x / 45) * 45;
-                newRot.y = Mathf.Round(newRot.y / 45) * 45;
-                newRot.z = Mathf.Round(newRot.z / 45) * 45;
+                var q = intentionalRotation; // _grabbedRigidbody.rotation;
 
-                _grabbedRigidbody.MoveRotation(Quaternion.Euler(newRot)); 
+                //var newRot = currentRot.eulerAngles;
+
+                //newRot.x = Mathf.Round(newRot.x / 45) * 45;
+                //newRot.y = Mathf.Round(newRot.y / 45) * 45;
+                //newRot.z = Mathf.Round(newRot.z / 45) * 45;
+
+                //_grabbedRigidbody.MoveRotation(Quaternion.Euler(newRot)); 
+
+                q.x /= q.w;
+                q.y /= q.w;
+                q.z /= q.w;
+                q.w = 1.0f;
+
+                var angleX = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.x);
+                var angleY = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.y);
+                var angleZ = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.z);
+
+                angleX = Mathf.Round(angleX / 45) * 45;
+                angleY = Mathf.Round(angleY / 45) * 45;
+                angleZ = Mathf.Round(angleZ / 45) * 45;
+
+                //Debug.Log("X = " + angleX + " Y = " + angleY + " Z = " + angleZ);
+
+                q.x = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleX);
+                q.y = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleY);
+                q.z = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleZ);
+
+                _grabbedRigidbody.MoveRotation(q.normalized);
             }
             else
             {
@@ -223,7 +242,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // Calculate object's center position based on the offset we stored
             // NOTE: We need to convert the local-space point back to world coordinates
             // Get the destination point for the point on the object we grabbed
-            var holdPoint           = ray.GetPoint(_currentGrabDistance) + _scrollWheelInput;
+            var holdPoint           = ray.GetPoint(_currentGrabDistance) + _scrollWheelInput;            
             var centerDestination   = holdPoint - _grabbedRigidbody.transform.TransformVector(_hitOffsetLocal);
 
 #if UNITY_EDITOR
@@ -247,35 +266,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 _currentGrabDistance = Vector3.Distance(ray.origin, holdPoint);
             }
 
-            RenderArc(transform.position, _grabbedRigidbody.transform.TransformPoint(_hitOffsetLocal), holdPoint);
+            if (_lineRendererController != null)
+                _lineRendererController.UpdateArcPoints(transform.position, holdPoint, _grabbedRigidbody.transform.TransformPoint(_hitOffsetLocal));
         }
-    }
-
-    private void LateUpdate()
-    {
-        _uvOffset -= (_uvAnimationRate * Time.deltaTime);
-        if (_lineRenderer.enabled)
-        {
-            _lineRenderer.material.SetTextureOffset(_mainTex, _uvOffset);
-        }
-    }
-
-    //Create Arc on the line renderer
-    private void RenderArc(Vector3 startpont, Vector3 endPoint, Vector3 midPoint)
-    { 
-        _laserGlowEndPoint.transform.position = endPoint * 0.99f;
-        _lineRenderer.SetPositions(GetArcPoints(startpont, midPoint, endPoint));
-    }
-
-    public Vector3[] GetArcPoints(Vector3 a, Vector3 b, Vector3 c)
-    {
-        for (int i = 0; i < _arcResolution; i++)
-        {
-            var t           =  (float)(i) / (_arcResolution);
-            _inputPoints[i] = Vector3.Lerp(Vector3.Lerp(a, b, t), Vector3.Lerp(b, c, t), t);
-        }
-
-        return _inputPoints;
     }
 
     /// <returns>Ray from center of the main camera's viewport forward</returns>
@@ -309,8 +302,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         _grabbedRigidbody.freezeRotation            = false;
         _grabbedRigidbody                           = null;
         _scrollWheelInput                           = _zeroVector3;
-        _lineRenderer.enabled                       = false;
-        //Reset the line points so we do not get a brief flash or the previous line
-        _lineRenderer.SetPositions(GetArcPoints(_zeroVector3, _zeroVector3, _zeroVector3));
+
+        if (_lineRendererController != null)
+            _lineRendererController.StopLineRenderer();
     }
 }
