@@ -42,8 +42,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private float                   _rotationSenstivity     = 1.5f;
     [SerializeField]
     private float                   _snapRotationDegrees    = 45f;
-    [SerializeField]
-    private float                   _snappedRotationSens    = 15f;
+    public  float                   _snappedRotationSens    = 15f;
     /// <summary>The maximum distance at which a new object can be picked up</summary>
     private const float             _maxGrabDistance        = 50;
 
@@ -248,9 +247,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     var angleY = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.y);
                     var angleZ = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.z);
 
-                    angleX = Mathf.Round(angleX / 45) * 45;
-                    angleY = Mathf.Round(angleY / 45) * 45;
-                    angleZ = Mathf.Round(angleZ / 45) * 45;
+                    angleX = Mathf.Round(angleX / _snapRotationDegrees) * _snapRotationDegrees;
+                    angleY = Mathf.Round(angleY / _snapRotationDegrees) * _snapRotationDegrees;
+                    angleZ = Mathf.Round(angleZ / _snapRotationDegrees) * _snapRotationDegrees;
 
                     //Debug.Log("X = " + angleX + " Y = " + angleY + " Z = " + angleZ);
 
