@@ -195,7 +195,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             Ray ray = CenterRay();
 
             // Apply any intentional rotation input made by the player & clear tracked input
-            var intentionalRotation         = Quaternion.AngleAxis(-_rotationInput.z, Vector3.forward) * Quaternion.AngleAxis(_rotationInput.y, Vector3.right) * Quaternion.AngleAxis(-_rotationInput.x, Vector3.up) *  _grabbedRigidbody.rotation;
+            var intentionalRotation         = Quaternion.AngleAxis(-_rotationInput.z, transform.forward) * Quaternion.AngleAxis(_rotationInput.y, transform.right) * Quaternion.AngleAxis(-_rotationInput.x, transform.up) *  _grabbedRigidbody.rotation;
             var relativeToPlayerRotation    = transform.rotation * _rotationDifference;
 
             if (_userRotation && _snapRotation)
