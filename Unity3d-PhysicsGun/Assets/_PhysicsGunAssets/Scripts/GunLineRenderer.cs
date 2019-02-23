@@ -5,16 +5,16 @@ public class GunLineRenderer : MonoBehaviour
 {
     [Header("Line Renderer Settings"), Space(5)]
     [SerializeField]
-    private Vector2         uvAnimationRate = new Vector2(1.0f, 0.0f);
-    Vector2                 uvOffset = Vector2.zero;
+    private Vector2         _uvAnimationRate        = new Vector2(1.0f, 0.0f);
+    private Vector2         _uvOffset               = Vector2.zero;
 
     [SerializeField]
-    private int             ArcResolution = 12;
+    private int             _arcResolution          = 12;
     private Vector3[]       _inputPoints;
     private LineRenderer    _lineRenderer;
 
     [SerializeField]
-    private Transform       _attachEffect;
+    private Transform       _attachEffect           = null;
 
     private GameObject      _objectToHightlight;
     private OutlineEffect   _outlineEffect;
@@ -26,8 +26,8 @@ public class GunLineRenderer : MonoBehaviour
         if (_lineRenderer == null)
             _lineRenderer = gameObject.AddComponent<LineRenderer>();
 
-        _inputPoints                = new Vector3[ArcResolution];
-        _lineRenderer.positionCount = ArcResolution;
+        _inputPoints                = new Vector3[_arcResolution];
+        _lineRenderer.positionCount = _arcResolution;
         _lineRenderer.enabled       = false;
 
         _outlineEffect = Camera.main.GetComponent<OutlineEffect>();
@@ -46,13 +46,13 @@ public class GunLineRenderer : MonoBehaviour
             return;
 
         //Animate Line Renderer Texture
-        uvOffset -= uvAnimationRate * Time.deltaTime;
-        _lineRenderer.material.SetTextureOffset(StringID.MainTex, uvOffset);
+        _uvOffset -= _uvAnimationRate * Time.deltaTime;
+        _lineRenderer.material.SetTextureOffset(StringID.MainTex, _uvOffset);
         _lineRenderer.SetPositions(_inputPoints);
 
         //Align our attached effect with the surface of the grabbed object
 
-        var rayOrigin       = Vector3.Lerp(_inputPoints[0], _inputPoints[ArcResolution - 1], 0.999f);
+        var rayOrigin       = Vector3.Lerp(_inputPoints[0], _inputPoints[_arcResolution - 1], 0.999f);
         var rayDirection    = _objectToHightlight.transform.position - rayOrigin;
 #if UNITY_EDITOR
         Debug.DrawRay(rayOrigin, rayDirection, Color.yellow);
@@ -68,7 +68,7 @@ public class GunLineRenderer : MonoBehaviour
         }
         else
         {
-            _attachEffect.position = _inputPoints[ArcResolution - 1];
+            _attachEffect.position = _inputPoints[_arcResolution - 1];
         }
     }
 
@@ -109,12 +109,12 @@ public class GunLineRenderer : MonoBehaviour
     {
         b = Vector3.Lerp(a, b, 0.6f);
 
-        for (int i = 0; i < ArcResolution - 1; i++)
+        for (int i = 0; i < _arcResolution - 1; i++)
         {
-            var t = (float)i / ArcResolution;
+            var t = (float)i / _arcResolution;
             _inputPoints[i] = Vector3.Lerp(Vector3.Lerp(a, b, t), Vector3.Lerp(b, c, t), t);
         }
 
-        _inputPoints[ArcResolution - 1] = c;
+        _inputPoints[_arcResolution - 1] = c;
     }
 }

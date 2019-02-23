@@ -37,12 +37,12 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
     /// <summary>Tracks player input to rotate current object. Used and reset every fixedupdate call</summary>
     private Vector2                 _rotationInput          = Vector2.zero;
-    private float                   _rotationSenstivity;
     [Header("Rotation Settings")]
     [SerializeField]
-    private float                   _freeRotationSens       = 1.5f;
+    private float                   _rotationSenstivity     = 1.5f;
+    
     [SerializeField]
-    private float                   _snappedRotationSens    = 12.5f;
+    private float                   _snappedRotationSens    = 15f;
     /// <summary>The maximum distance at which a new object can be picked up</summary>
     private const float             _maxGrabDistance        = 50;
 
@@ -80,6 +80,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
         _lineRendererController = GetComponent<GunLineRenderer>();
     }
+    [SerializeField]
+    private Vector2 _lockedRot;
 
 	private void Update ()
     {
@@ -127,7 +129,6 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
                     // Set rigidbody's interpolation for proper collision detection when being moved by the player
                     _grabbedRigidbody.interpolation     = RigidbodyInterpolation.Interpolate;
-
 
                     if (_lineRendererController != null)
                         _lineRendererController.StartLineRenderer(_grabbedRigidbody.gameObject);
@@ -195,42 +196,79 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
             if (userRotation && Input.GetKey(KeyCode.LeftShift))
             {
-                _rotationSenstivity = _snappedRotationSens;
+                _lockedRot += _rotationInput;
+                var q = _grabbedRigidbody.rotation; // _grabbedRigidbody.rotation;
 
-                var q = intentionalRotation; // _grabbedRigidbody.rotation;
+                var diff = 45f;
 
-                //var newRot = currentRot.eulerAngles;
+                if (Mathf.Abs(_lockedRot.x) > _snappedRotationSens || Mathf.Abs(_lockedRot.y) > _snappedRotationSens)
+                {
+                    if (_lockedRot.x > _snappedRotationSens)
+                    {
+                        _lockedRot.x = diff;
+                    }
+                    else if (_lockedRot.x < -_snappedRotationSens)
+                    {
+                        _lockedRot.x = -diff;
+                    }
+                    else
+                    {
+                        _lockedRot.x = 0;
+                    }
 
-                //newRot.x = Mathf.Round(newRot.x / 45) * 45;
-                //newRot.y = Mathf.Round(newRot.y / 45) * 45;
-                //newRot.z = Mathf.Round(newRot.z / 45) * 45;
+                    if (_lockedRot.y > _snappedRotationSens)
+                    {
+                        _lockedRot.y = diff;
+                    }
+                    else if (_lockedRot.y < -_snappedRotationSens)
+                    {
+                        _lockedRot.y = -diff;
+                    }
+                    else
+                    {
+                        _lockedRot.y = 0;
+                    }
 
-                //_grabbedRigidbody.MoveRotation(Quaternion.Euler(newRot)); 
+                    q = Quaternion.AngleAxis(_lockedRot.y, _grabbedRigidbody.transform.right) * Quaternion.AngleAxis(_lockedRot.x, _grabbedRigidbody.transform.up)* q;
 
-                q.x /= q.w;
-                q.y /= q.w;
-                q.z /= q.w;
-                q.w = 1.0f;
+                    _grabbedRigidbody.rotation = q;
 
-                var angleX = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.x);
-                var angleY = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.y);
-                var angleZ = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.z);
+                    _lockedRot = _zeroVector2;
+                }
+                else
+                {
+                    //var newRot = q.eulerAngles;
 
-                angleX = Mathf.Round(angleX / 45) * 45;
-                angleY = Mathf.Round(angleY / 45) * 45;
-                angleZ = Mathf.Round(angleZ / 45) * 45;
+                    //newRot.x = Mathf.Round(newRot.x / 45) * 45;
+                    //newRot.y = Mathf.Round(newRot.y / 45) * 45;
+                    //newRot.z = Mathf.Round(newRot.z / 45) * 45;
 
-                //Debug.Log("X = " + angleX + " Y = " + angleY + " Z = " + angleZ);
+                    //_grabbedRigidbody.rotation = Quaternion.Euler(newRot);
 
-                q.x = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleX);
-                q.y = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleY);
-                q.z = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleZ);
+                    q.x /= q.w;
+                    q.y /= q.w;
+                    q.z /= q.w;
+                    q.w = 1.0f;
 
-                _grabbedRigidbody.MoveRotation(q.normalized);
+                    var angleX = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.x);
+                    var angleY = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.y);
+                    var angleZ = 2.0f * Mathf.Rad2Deg * Mathf.Atan(q.z);
+
+                    angleX = Mathf.Round(angleX / 45) * 45;
+                    angleY = Mathf.Round(angleY / 45) * 45;
+                    angleZ = Mathf.Round(angleZ / 45) * 45;
+
+                    //Debug.Log("X = " + angleX + " Y = " + angleY + " Z = " + angleZ);
+
+                    q.x = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleX);
+                    q.y = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleY);
+                    q.z = Mathf.Tan(0.5f * Mathf.Deg2Rad * angleZ);
+
+                    _grabbedRigidbody.MoveRotation(q.normalized);
+                }
             }
             else
-            {
-                _rotationSenstivity = _freeRotationSens;
+            {                
                 //Rotate the object to remain consistent with any changes in player's rotation
                 _grabbedRigidbody.MoveRotation(userRotation ? intentionalRotation : relativeToPlayerRotation);
             }
