@@ -208,44 +208,20 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 //If the mouse has moved far enough to rotate the snapped object
                 if (Mathf.Abs(_lockedRot.x) > _snappedRotationSens || Mathf.Abs(_lockedRot.y) > _snappedRotationSens || Mathf.Abs(_lockedRot.z) > _snappedRotationSens)
                 {
-                    if (_lockedRot.x > _snappedRotationSens)
+                    for(var i = 0; i < 3; i ++)
                     {
-                        _lockedRot.x = _snapRotationDegrees;
-                    }
-                    else if (_lockedRot.x < -_snappedRotationSens)
-                    {
-                        _lockedRot.x = -_snapRotationDegrees;
-                    }
-                    else
-                    {
-                        _lockedRot.x = 0;
-                    }
-
-                    if (_lockedRot.y > _snappedRotationSens)
-                    {
-                        _lockedRot.y = _snapRotationDegrees;
-                    }
-                    else if (_lockedRot.y < -_snappedRotationSens)
-                    {
-                        _lockedRot.y = -_snapRotationDegrees;
-                    }
-                    else
-                    {
-                        _lockedRot.y = 0;
-                    }
-
-
-                    if (_lockedRot.z > _snappedRotationSens)
-                    {
-                        _lockedRot.z = _snapRotationDegrees;
-                    }
-                    else if (_lockedRot.z < -_snappedRotationSens)
-                    {
-                        _lockedRot.z = -_snapRotationDegrees;
-                    }
-                    else
-                    {
-                        _lockedRot.z = 0;
+                        if (_lockedRot[i] > _snappedRotationSens)
+                        {
+                            _lockedRot[i] = _snapRotationDegrees;
+                        }
+                        else if (_lockedRot[i] < -_snappedRotationSens)
+                        {
+                            _lockedRot[i] = -_snapRotationDegrees;
+                        }
+                        else
+                        {
+                            _lockedRot[i] = 0;
+                        }
                     }
 
                     q =  Quaternion.AngleAxis(-_lockedRot.z, Vector3.forward) * Quaternion.AngleAxis(_lockedRot.y, Vector3.right) * Quaternion.AngleAxis(-_lockedRot.x, Vector3.up) * q;
