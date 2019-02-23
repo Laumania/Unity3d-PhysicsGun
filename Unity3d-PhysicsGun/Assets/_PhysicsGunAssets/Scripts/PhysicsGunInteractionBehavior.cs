@@ -40,9 +40,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     [Header("Rotation Settings")]
     [SerializeField]
     private float                   _rotationSenstivity     = 1.5f;
+    public  float                   _snapRotationDegrees    = 45f;
     [SerializeField]
-    private float                   _snapRotationDegrees    = 45f;
-    public  float                   _snappedRotationSens    = 15f;
+    private float                   _snappedRotationSens    = 15f;
     /// <summary>The maximum distance at which a new object can be picked up</summary>
     private const float             _maxGrabDistance        = 50;
 
