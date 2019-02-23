@@ -36,7 +36,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Quaternion              _rotationDifference;
 
     /// <summary>Tracks player input to rotate current object. Used and reset every fixedupdate call</summary>
-    private Vector2                 _rotationInput          = Vector2.zero;
+    private Vector3                 _rotationInput          = Vector3.zero;
     [Header("Rotation Settings")]
     [SerializeField]
     private float                   _rotationSenstivity     = 1.5f;
@@ -81,7 +81,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         _lineRendererController = GetComponent<GunLineRenderer>();
     }
     [SerializeField]
-    private Vector2 _lockedRot;
+    private Vector3 _lockedRot;
 
 	private void Update ()
     {
@@ -142,9 +142,13 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // We are already holding an object, listen for rotation input
             if (Input.GetKey(KeyCode.R))
             {
-                _snapRotation    = Input.GetKey(KeyCode.LeftShift);
-                _rotationInput.x = Input.GetAxisRaw("Mouse X") * _rotationSenstivity;
-                _rotationInput.y = Input.GetAxisRaw("Mouse Y") * _rotationSenstivity;
+                _snapRotation       = Input.GetKey(KeyCode.LeftShift);
+
+                var rotateZ         = Input.GetKey(KeyCode.Space);
+
+                _rotationInput.x    = rotateZ ? 0f : Input.GetAxisRaw("Mouse X") * _rotationSenstivity;
+                _rotationInput.y    = Input.GetAxisRaw("Mouse Y") * _rotationSenstivity;
+                _rotationInput.z    = rotateZ ? Input.GetAxisRaw("Mouse X") * _rotationSenstivity : 0f;
             }
             else
             {
@@ -189,7 +193,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             Ray ray = CenterRay();
 
             // Apply any intentional rotation input made by the player & clear tracked input
-            var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.y, transform.right) * Quaternion.AngleAxis(-_rotationInput.x, transform.up) * _grabbedRigidbody.rotation;
+            var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.y, transform.right) * Quaternion.AngleAxis(-_rotationInput.x, transform.up) * Quaternion.AngleAxis(-_rotationInput.z, transform.forward) * _grabbedRigidbody.rotation;
             var relativeToPlayerRotation    = transform.rotation * _rotationDifference;
 
             if (_userRotation && _snapRotation)
@@ -200,7 +204,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 var q = _grabbedRigidbody.rotation;                 
 
                 //If the mouse has moved far enough to rotate the snapped object
-                if (Mathf.Abs(_lockedRot.x) > _snappedRotationSens || Mathf.Abs(_lockedRot.y) > _snappedRotationSens)
+                if (Mathf.Abs(_lockedRot.x) > _snappedRotationSens || Mathf.Abs(_lockedRot.y) > _snappedRotationSens || Mathf.Abs(_lockedRot.z) > _snappedRotationSens)
                 {
                     if (_lockedRot.x > _snappedRotationSens)
                     {
@@ -228,7 +232,20 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                         _lockedRot.y = 0;
                     }
 
-                    q = Quaternion.AngleAxis(_lockedRot.y, transform.right) * Quaternion.AngleAxis(_lockedRot.x, transform.up) * q;
+
+                    if (_lockedRot.z > _snappedRotationSens)
+                    {
+                        _lockedRot.z = _snapRotationDegrees;
+                    }
+                    else if (_lockedRot.z < -_snappedRotationSens)
+                    {
+                        _lockedRot.z = -_snapRotationDegrees;
+                    }
+                    else
+                    {
+                        _lockedRot.z = 0;
+                    }
+                    q = Quaternion.AngleAxis(_lockedRot.y, transform.right) * Quaternion.AngleAxis(_lockedRot.x, transform.up) * Quaternion.AngleAxis(_lockedRot.z, transform.forward) * q;
 
                     _grabbedRigidbody.rotation = q;
 
@@ -236,7 +253,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 }
                 else
                 {
-                    //Lock rotation to the nearest 45 degree value in worldspace
+                    //Lock rotation to the nearest _snapRotationDegrees degree value in worldspace
 
                     q.x /= q.w;
                     q.y /= q.w;
