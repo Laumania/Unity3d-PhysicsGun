@@ -40,7 +40,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     [Header("Rotation Settings")]
     [SerializeField]
     private float                   _rotationSenstivity     = 1.5f;
-    
+    [SerializeField]
+    private float                   _snapRotationDegrees    = 45f;
     [SerializeField]
     private float                   _snappedRotationSens    = 15f;
     /// <summary>The maximum distance at which a new object can be picked up</summary>
@@ -192,24 +193,23 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.y, transform.right) * Quaternion.AngleAxis(-_rotationInput.x, transform.up) * _grabbedRigidbody.rotation;
             var relativeToPlayerRotation    = transform.rotation * _rotationDifference;
 
-            var userRotation = Input.GetKey(KeyCode.R);
-
-            if (userRotation && Input.GetKey(KeyCode.LeftShift))
+            if (_userRotation && _snapRotation)
             {
+                //Add mouse movement to vector so we can measure the amount of movement
                 _lockedRot += _rotationInput;
-                var q = _grabbedRigidbody.rotation; // _grabbedRigidbody.rotation;
 
-                var diff = 45f;
+                var q = _grabbedRigidbody.rotation;                 
 
+                //If the mouse has moved far enough to rotate the snapped object
                 if (Mathf.Abs(_lockedRot.x) > _snappedRotationSens || Mathf.Abs(_lockedRot.y) > _snappedRotationSens)
                 {
                     if (_lockedRot.x > _snappedRotationSens)
                     {
-                        _lockedRot.x = diff;
+                        _lockedRot.x = _snapRotationDegrees;
                     }
                     else if (_lockedRot.x < -_snappedRotationSens)
                     {
-                        _lockedRot.x = -diff;
+                        _lockedRot.x = -_snapRotationDegrees;
                     }
                     else
                     {
@@ -218,18 +218,18 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
                     if (_lockedRot.y > _snappedRotationSens)
                     {
-                        _lockedRot.y = diff;
+                        _lockedRot.y = _snapRotationDegrees;
                     }
                     else if (_lockedRot.y < -_snappedRotationSens)
                     {
-                        _lockedRot.y = -diff;
+                        _lockedRot.y = -_snapRotationDegrees;
                     }
                     else
                     {
                         _lockedRot.y = 0;
                     }
 
-                    q = Quaternion.AngleAxis(_lockedRot.y, _grabbedRigidbody.transform.right) * Quaternion.AngleAxis(_lockedRot.x, _grabbedRigidbody.transform.up)* q;
+                    q = Quaternion.AngleAxis(_lockedRot.y, transform.right) * Quaternion.AngleAxis(_lockedRot.x, transform.up) * q;
 
                     _grabbedRigidbody.rotation = q;
 
@@ -237,13 +237,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 }
                 else
                 {
-                    //var newRot = q.eulerAngles;
-
-                    //newRot.x = Mathf.Round(newRot.x / 45) * 45;
-                    //newRot.y = Mathf.Round(newRot.y / 45) * 45;
-                    //newRot.z = Mathf.Round(newRot.z / 45) * 45;
-
-                    //_grabbedRigidbody.rotation = Quaternion.Euler(newRot);
+                    //Lock rotation to the nearest 45 degree value in worldspace
 
                     q.x /= q.w;
                     q.y /= q.w;
@@ -270,7 +264,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             else
             {                
                 //Rotate the object to remain consistent with any changes in player's rotation
-                _grabbedRigidbody.MoveRotation(userRotation ? intentionalRotation : relativeToPlayerRotation);
+                _grabbedRigidbody.MoveRotation(_userRotation ? intentionalRotation : relativeToPlayerRotation);
             }
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
             _grabbedRigidbody.angularVelocity   = _zeroVector3;
