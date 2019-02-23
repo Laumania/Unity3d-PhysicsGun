@@ -146,9 +146,11 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
                 var rotateZ         = Input.GetKey(KeyCode.Space);
 
-                _rotationInput.x    = rotateZ ? 0f : Input.GetAxisRaw("Mouse X") * _rotationSenstivity;
-                _rotationInput.y    = Input.GetAxisRaw("Mouse Y") * _rotationSenstivity;
-                _rotationInput.z    = rotateZ ? Input.GetAxisRaw("Mouse X") * _rotationSenstivity : 0f;
+                var increaseSens    = Input.GetKey(KeyCode.LeftControl) ? 2.5f : 1f;
+
+                _rotationInput.x    = rotateZ ? 0f : Input.GetAxisRaw("Mouse X") * _rotationSenstivity * increaseSens;
+                _rotationInput.y    = Input.GetAxisRaw("Mouse Y") * _rotationSenstivity * increaseSens;
+                _rotationInput.z    = rotateZ ? Input.GetAxisRaw("Mouse X") * _rotationSenstivity * increaseSens : 0f;
             }
             else
             {
@@ -245,6 +247,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     {
                         _lockedRot.z = 0;
                     }
+
                     q = Quaternion.AngleAxis(_lockedRot.y, transform.right) * Quaternion.AngleAxis(_lockedRot.x, transform.up) * Quaternion.AngleAxis(_lockedRot.z, transform.forward) * q;
 
                     _grabbedRigidbody.rotation = q;
