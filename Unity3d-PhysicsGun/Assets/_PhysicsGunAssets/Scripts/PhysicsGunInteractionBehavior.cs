@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
+using UnityEngine.UI;
 using UnityStandardAssets.Characters.FirstPerson;
 
 /* Original script "Gravity Gun": https://pastebin.com/w1G8m3dH
@@ -14,14 +12,25 @@ using UnityStandardAssets.Characters.FirstPerson;
  * WarmedxMints, https://github.com/WarmedxMints
  */
 
- [RequireComponent(typeof(LineRenderer))]
+[RequireComponent(typeof(GunLineRenderer))]
 public class PhysicsGunInteractionBehavior : MonoBehaviour
 {
+    [Header("Input Setting")]
+    public KeyCode Rotate                   = KeyCode.R;
+    public KeyCode SnapRotation             = KeyCode.LeftShift;
+    public KeyCode SwitchAxis               = KeyCode.Tab;
+    public KeyCode RotateZ                  = KeyCode.Space;
+    public KeyCode RotationSpeedIncrease    = KeyCode.LeftControl;
+    public KeyCode ResetRotation            = KeyCode.LeftAlt;
+
     /// <summary>For easy enable/disable mouse look when rotating objects, we store this reference</summary>
     private FirstPersonController   _firstPersonController;
 
     /// <summary>The rigidbody we are currently holding</summary>
     private Rigidbody               _grabbedRigidbody;
+
+    /// <summary>The transfor of the rigidbody we are holding</summary>
+    private Transform               _grabbedTransform; 
 
     /// <summary>The offset vector from the object's position to hit point, in local space</summary>
     private Vector3                 _hitOffsetLocal;
@@ -35,16 +44,40 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     /// <summary>The difference between player & object rotation, updated when picked up or when rotated by the player</summary>
     private Quaternion              _rotationDifference;
 
+    /// <summary>The start point for the Laser. This will typically be on the end of the gun</summary>
+    [SerializeField]
+    private Transform               _laserStartPoint = null;
+
     /// <summary>Tracks player input to rotate current object. Used and reset every fixedupdate call</summary>
-    private Vector2                 _rotationInput          = Vector2.zero;
-    private float                   _rotationSenstivity;
+    private Vector3                 _rotationInput          = Vector3.zero;
     [Header("Rotation Settings")]
     [SerializeField]
-    private float                   _freeRotationSens       = 1.5f;
+    private float                   _rotationSenstivity     = 1.5f;
+    public  float                   _snapRotationDegrees    = 45f;
     [SerializeField]
-    private float                   _snappedRotationSens    = 12.5f;
+    private float                   _snappedRotationSens    = 15f;
+    [SerializeField]
+    private float                   _rotationSpeed          = 5f;
+
+    private Quaternion              _desiredRotation = Quaternion.identity;
+
     /// <summary>The maximum distance at which a new object can be picked up</summary>
-    private const float             _maxGrabDistance        = 50;
+    private const float             _maxGrabDistance        = 50f;
+
+    [SerializeField, Tooltip("Input values above this will be considered and intentional change in rotation")]
+    private float                   _rotationTollerance = 0.8f;
+
+    private bool                    _userRotation;
+    private bool                    _snapRotation;
+   
+    private Vector3                 _lockedRot;
+    private Vector3                 _forward;
+    private Vector3                 _up;
+    private Vector3                 _right;
+
+    private bool                    _rotationAxis;
+    [SerializeField]
+    private Text                    _rotationAxisText = null;
 
     //ScrollWheel ObjectMovement
     private Vector3                 _scrollWheelInput       = Vector3.zero;
@@ -62,18 +95,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Vector3                 _oneVector3             = Vector3.one;
     private Vector3                 _zeroVector2            = Vector2.zero;
 
-    [Header("Line Renderer Settings"), Space(5)]
-    [SerializeField]
-    private Vector2                 _uvAnimationRate        = new Vector2(1.0f, 0.0f);
-    private Vector2                 _uvOffset               = Vector2.zero;
-    private int                     _mainTex                = Shader.PropertyToID("_MainTex");
-    [SerializeField]
-    private int                     _arcResolution          = 12;
-    private Vector3[]               _inputPoints;
-    private LineRenderer            _lineRenderer;
-    [SerializeField]
-    private GameObject              _laserStartPoint;
-    [SerializeField]
+    private GunLineRenderer         _lineRendererController;
+
     private GameObject              _laserGlowEndPoint;
 
     private bool                    _justReleased;
@@ -84,21 +107,20 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         _firstPersonController = GetComponent<FirstPersonController>();
         if(_firstPersonController == null)
             Debug.LogError($"{nameof(_firstPersonController)} is null and the gravity gun won't work properly!", this);
-        
-        _lineRenderer = GetComponent<LineRenderer>();
-        if (_lineRenderer == null)
-            Debug.LogError($"{nameof(_lineRenderer)} is null and this script won't work properly without it!", this);
 
-        _inputPoints                = new Vector3[_arcResolution];
-        _lineRenderer.positionCount = _arcResolution;
-        
-        _laserStartPoint.SetActive(false);
+        _lineRendererController = GetComponent<GunLineRenderer>();
+
+        SetRotationAxisText();
+
+        if (_laserStartPoint == null)
+            _laserStartPoint = transform;
     }
 
 	private void Update ()
     {
-        _laserGlowEndPoint.SetActive(_lineRenderer.enabled);
-        _firstPersonController.enabled = !Input.GetKey(KeyCode.R); 
+        _userRotation = Input.GetKey(Rotate);
+
+        _firstPersonController.enabled = !_userRotation;
 
         if (!Input.GetMouseButton(0))
         {
@@ -137,21 +159,83 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     _rotationDifference                 = Quaternion.Inverse(transform.rotation) * _grabbedRigidbody.rotation;
                     _hitOffsetLocal                     = hit.transform.InverseTransformVector(hit.point - hit.transform.position);
                     _currentGrabDistance                = hit.distance; // Vector3.Distance(ray.origin, hit.point);
-
+                    _grabbedTransform                   = _grabbedRigidbody.transform;
                     // Set rigidbody's interpolation for proper collision detection when being moved by the player
                     _grabbedRigidbody.interpolation     = RigidbodyInterpolation.Interpolate;
 
-                    _lineRenderer.enabled = true;                    
+                    if (_lineRendererController != null)
+                        _lineRendererController.StartLineRenderer(_grabbedRigidbody.gameObject);
+#if UNITY_EDITOR
+                    Debug.DrawRay(hit.point, hit.normal * 10f, Color.red, 10f);
+#endif
                 }
             }
         }
         else
         {
-            // We are already holding an object, listen for rotation input
-            if (Input.GetKey(KeyCode.R))
+            if(Input.GetKeyDown(Rotate))
             {
-                _rotationInput.x = Input.GetAxisRaw("Mouse X") * _rotationSenstivity;
-                _rotationInput.y = Input.GetAxisRaw("Mouse Y") * _rotationSenstivity;
+                SetRotationAxisText();
+            }
+
+            if (Input.GetKey(ResetRotation))
+            {
+                _grabbedRigidbody.MoveRotation(Quaternion.identity);
+                SetRotationAxisText();
+            }
+
+            // We are already holding an object, listen for rotation input
+            if (Input.GetKey(Rotate))
+            {
+                var rotateZ         = Input.GetKey(RotateZ);
+
+                var increaseSens    = Input.GetKey(RotationSpeedIncrease) ? 2.5f : 1f;
+
+                if(Input.GetKeyDown(SwitchAxis))
+                {
+                    _rotationAxis = !_rotationAxis;
+
+                    SetRotationAxisText();
+                }
+
+                //Snap Object nearest _snapRotationDegrees
+                if (Input.GetKeyDown(SnapRotation))
+                {
+                    _snapRotation = true;
+
+                    var newRot = _grabbedRigidbody.transform.rotation.eulerAngles;
+
+                    newRot.x = Mathf.Round(newRot.x / _snapRotationDegrees) * _snapRotationDegrees;
+                    newRot.y = Mathf.Round(newRot.y / _snapRotationDegrees) * _snapRotationDegrees;
+                    newRot.z = Mathf.Round(newRot.z / _snapRotationDegrees) * _snapRotationDegrees;
+
+                    _grabbedRigidbody.MoveRotation(Quaternion.Euler(newRot));
+
+                    SetRotationAxisText();
+                }
+                else if(Input.GetKeyUp(SnapRotation))
+                {
+                    _snapRotation = false;
+                    SetRotationAxisText();
+                }
+
+                var x = Input.GetAxisRaw("Mouse X");
+                var y = Input.GetAxisRaw("Mouse Y");
+
+                if (Mathf.Abs(x) > _rotationTollerance)
+                {
+                    _rotationInput.x = rotateZ ? 0f : x * _rotationSenstivity * increaseSens;                   
+                    _rotationInput.z = rotateZ ? x * _rotationSenstivity * increaseSens : 0f;
+                }
+
+                if(Mathf.Abs(y) > _rotationTollerance)
+                {
+                    _rotationInput.y = y * _rotationSenstivity * increaseSens;
+                }
+            }
+            else
+            {
+                _snapRotation = false;
             }
 
             var direction = Input.GetAxis("Mouse ScrollWheel");
@@ -191,29 +275,58 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // We are holding an object, time to rotate & move it
             Ray ray = CenterRay();
 
+            UpdateRotationAxis();
+
+#if UNITY_EDITOR
+            Debug.DrawRay(_grabbedTransform.position, _up * 5f, Color.green);
+            Debug.DrawRay(_grabbedTransform.position, _right * 5f, Color.blue);
+            Debug.DrawRay(_grabbedTransform.position, _forward * 5f, Color.red);
+#endif
             // Apply any intentional rotation input made by the player & clear tracked input
-            var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.y, transform.right) * Quaternion.AngleAxis(-_rotationInput.x, transform.up) * _grabbedRigidbody.rotation;
+            var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.z, _forward) * Quaternion.AngleAxis(_rotationInput.y, _right) * Quaternion.AngleAxis(-_rotationInput.x, _up) *  _grabbedRigidbody.rotation;
             var relativeToPlayerRotation    = transform.rotation * _rotationDifference;
 
-            var userRotation = Input.GetKey(KeyCode.R);
-
-            if (userRotation && Input.GetKey(KeyCode.LeftShift))
+            if (_userRotation && _snapRotation)
             {
-                _rotationSenstivity = _snappedRotationSens;
-                var currentRot      = intentionalRotation;
-                var newRot          = currentRot.eulerAngles;
+                //Add mouse movement to vector so we can measure the amount of movement
+                _lockedRot += _rotationInput;    
 
-                newRot.x = Mathf.Round(newRot.x / 45) * 45;
-                newRot.y = Mathf.Round(newRot.y / 45) * 45;
-                newRot.z = Mathf.Round(newRot.z / 45) * 45;
+                //If the mouse has moved far enough to rotate the snapped object
+                if (Mathf.Abs(_lockedRot.x) > _snappedRotationSens || Mathf.Abs(_lockedRot.y) > _snappedRotationSens || Mathf.Abs(_lockedRot.z) > _snappedRotationSens)
+                {
+                    for (var i = 0; i < 3; i++)
+                    {
+                        if (_lockedRot[i] > _snappedRotationSens)
+                        {
+                            _lockedRot[i] += _snapRotationDegrees;
+                        }
+                        else if (_lockedRot[i] < -_snappedRotationSens)
+                        {
+                            _lockedRot[i] += -_snapRotationDegrees;
+                        }
+                        else
+                        {
+                            _lockedRot[i] = 0;
+                        }
+                    }
 
-                _grabbedRigidbody.MoveRotation(Quaternion.Euler(newRot)); 
+                    var q = Quaternion.AngleAxis(-_lockedRot.x, _up) * Quaternion.AngleAxis(_lockedRot.y, _right) * Quaternion.AngleAxis(_lockedRot.z, _forward) * _grabbedRigidbody.rotation;
+
+                    var newRot = q.eulerAngles;
+
+                    newRot.x = Mathf.Round(newRot.x / _snapRotationDegrees) * _snapRotationDegrees;
+                    newRot.y = Mathf.Round(newRot.y / _snapRotationDegrees) * _snapRotationDegrees;
+                    newRot.z = Mathf.Round(newRot.z / _snapRotationDegrees) * _snapRotationDegrees;
+
+                    _desiredRotation = Quaternion.Euler(newRot);
+
+                    _lockedRot = _zeroVector2;
+                }
             }
             else
-            {
-                _rotationSenstivity = _freeRotationSens;
+            {                
                 //Rotate the object to remain consistent with any changes in player's rotation
-                _grabbedRigidbody.MoveRotation(userRotation ? intentionalRotation : relativeToPlayerRotation);
+                _desiredRotation = _userRotation ? intentionalRotation : relativeToPlayerRotation;
             }
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
             _grabbedRigidbody.angularVelocity   = _zeroVector3;
@@ -224,13 +337,13 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // NOTE: We need to convert the local-space point back to world coordinates
             // Get the destination point for the point on the object we grabbed
             var holdPoint           = ray.GetPoint(_currentGrabDistance) + _scrollWheelInput;
-            var centerDestination   = holdPoint - _grabbedRigidbody.transform.TransformVector(_hitOffsetLocal);
+            var centerDestination = holdPoint - _grabbedTransform.TransformVector(_hitOffsetLocal);
 
 #if UNITY_EDITOR
             Debug.DrawLine(ray.origin, holdPoint, Color.blue, Time.fixedDeltaTime);
 #endif
             // Find vector from current position to destination
-            var toDestination = centerDestination - _grabbedRigidbody.transform.position;
+            var toDestination = centerDestination - _grabbedTransform.position;
 
             // Calculate force
             var force = (toDestination / Time.fixedDeltaTime * 0.3f) / _grabbedRigidbody.mass;
@@ -240,6 +353,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             _grabbedRigidbody.velocity = _zeroVector3;
             _grabbedRigidbody.AddForce(force, ForceMode.VelocityChange);
 
+            //Rotate object
+            RotateGrabbedObject();
+
             //We need to recalculte the grabbed distance as the object distance from the player has been changed
             if (_distanceChanged)
             {
@@ -247,35 +363,98 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 _currentGrabDistance = Vector3.Distance(ray.origin, holdPoint);
             }
 
-            RenderArc(transform.position, _grabbedRigidbody.transform.TransformPoint(_hitOffsetLocal), holdPoint);
+            if (_lineRendererController != null)
+                _lineRendererController.UpdateArcPoints(_laserStartPoint.position, holdPoint, _grabbedTransform.TransformPoint(_hitOffsetLocal));
         }
     }
 
-    private void LateUpdate()
+    private void RotateGrabbedObject()
     {
-        _uvOffset -= (_uvAnimationRate * Time.deltaTime);
-        if (_lineRenderer.enabled)
-        {
-            _lineRenderer.material.SetTextureOffset(_mainTex, _uvOffset);
-        }
-    }
+        if (_grabbedRigidbody == null)
+            return;
 
-    //Create Arc on the line renderer
-    private void RenderArc(Vector3 startpont, Vector3 endPoint, Vector3 midPoint)
-    { 
-        _laserGlowEndPoint.transform.position = endPoint * 0.99f;
-        _lineRenderer.SetPositions(GetArcPoints(startpont, midPoint, endPoint));
+        _grabbedRigidbody.MoveRotation(Quaternion.Lerp(_grabbedRigidbody.rotation, _desiredRotation, Time.fixedDeltaTime * _rotationSpeed));
     }
-
-    public Vector3[] GetArcPoints(Vector3 a, Vector3 b, Vector3 c)
+    /// <summary>
+    /// Takes a Vector direction and finds the nearest directional vector to it from a transforms directions
+    /// </summary>
+    /// <param name="v">Vector Direction</param>
+    /// <param name="t">Transform to check</param>
+    /// <returns></returns>
+    private Vector3 NearestDirection(Vector3 v, Transform t)
     {
-        for (int i = 0; i < _arcResolution; i++)
+        var directions = new Vector3[]
         {
-            var t           =  (float)(i) / (_arcResolution);
-            _inputPoints[i] = Vector3.Lerp(Vector3.Lerp(a, b, t), Vector3.Lerp(b, c, t), t);
+            t.right,
+            -t.right,
+            t.up,
+            -t.up,
+            t.forward,
+            -t.forward
+        };
+
+        var maxDot  = -Mathf.Infinity;
+        var ret     = _zeroVector3;
+
+        for(var i = 0; i < 6; i++)
+        {
+            var dot = Vector3.Dot(v, directions[i]);
+            if(dot > maxDot)
+            {
+                ret     = directions[i];
+                maxDot  = dot;
+            }
         }
 
-        return _inputPoints;
+        return ret;
+    }
+
+    //Update Rotation axis based on movement
+    private void UpdateRotationAxis()
+    {
+        if (!_snapRotation)
+        {
+            //if (Mathf.Abs(_rotationInput.x) > _rotationTollerance * _rotationSenstivity)
+            //{
+            //    forward = _rotationAxis ? t.forward : NearestDirection(transform.forward, t);
+            //    right   = _rotationAxis ? t.right   : NearestDirection(transform.right, t);
+            //}
+            //if (Mathf.Abs(_rotationInput.y) > _rotationTollerance * _rotationSenstivity)
+            //{
+            //    forward = _rotationAxis ? t.forward : NearestDirection(transform.forward, t);
+            //    up      = _rotationAxis ? t.up      : NearestDirection(transform.up, t);
+            //}
+            //if (Mathf.Abs(_rotationInput.z) > _rotationTollerance * _rotationSenstivity)
+            //{
+            //    right = _rotationAxis ? t.right : NearestDirection(transform.right, t);
+            //    up    = _rotationAxis ? t.up    : NearestDirection(transform.up, t);
+            //}
+
+            _forward = transform.forward;
+            _right   = transform.right;
+            _up      = transform.up;
+
+            return;
+        }
+
+        _forward = _rotationAxis ? _grabbedTransform.forward : NearestDirection(transform.forward, _grabbedTransform);
+        _right   = _rotationAxis ? _grabbedTransform.right   : NearestDirection(transform.right, _grabbedTransform);
+        _up      = _rotationAxis ? _grabbedTransform.up      : NearestDirection(transform.up, _grabbedTransform);
+    }
+
+    private void SetRotationAxisText()
+    {
+        if (_rotationAxisText != null)
+        {
+            if(!_snapRotation)
+            {
+                _rotationAxisText.enabled = false;
+                return;
+            }
+
+            _rotationAxisText.enabled = true;
+            _rotationAxisText.text = _rotationAxis ? "Snapped Rotation Axis = Objects Axis" : "Snapped Rotation Axis = Player Axis";
+        }
     }
 
     /// <returns>Ray from center of the main camera's viewport forward</returns>
@@ -309,8 +488,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         _grabbedRigidbody.freezeRotation            = false;
         _grabbedRigidbody                           = null;
         _scrollWheelInput                           = _zeroVector3;
-        _lineRenderer.enabled                       = false;
-        //Reset the line points so we do not get a brief flash or the previous line
-        _lineRenderer.SetPositions(GetArcPoints(_zeroVector3, _zeroVector3, _zeroVector3));
+        _grabbedTransform                           = null;
+
+        if (_lineRendererController != null)
+            _lineRendererController.StopLineRenderer();
     }
 }
