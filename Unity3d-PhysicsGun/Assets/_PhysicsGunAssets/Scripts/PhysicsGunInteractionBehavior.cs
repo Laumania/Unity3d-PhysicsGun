@@ -16,12 +16,13 @@ using UnityStandardAssets.Characters.FirstPerson;
 public class PhysicsGunInteractionBehavior : MonoBehaviour
 {
     [Header("Input Setting")]
-    public KeyCode Rotate = KeyCode.R;
-    public KeyCode SnapRotation = KeyCode.LeftShift;
-    public KeyCode SwitchAxis = KeyCode.Tab;
-    public KeyCode RotateZ = KeyCode.Space;
-    public KeyCode RotationSpeedIncrease = KeyCode.LeftControl;
-    public KeyCode ResetRotation = KeyCode.LeftAlt;
+    public KeyCode Rotate                   = KeyCode.R;
+    public KeyCode SnapRotation             = KeyCode.LeftShift;
+    public KeyCode SwitchAxis               = KeyCode.Tab;
+    public KeyCode RotateZ                  = KeyCode.Space;
+    public KeyCode RotationSpeedIncrease    = KeyCode.LeftControl;
+    public KeyCode ResetRotation            = KeyCode.LeftAlt;
+
     /// <summary>For easy enable/disable mouse look when rotating objects, we store this reference</summary>
     private FirstPersonController   _firstPersonController;
 
@@ -173,9 +174,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // We are already holding an object, listen for rotation input
             if (Input.GetKey(Rotate))
             {
-                _snapRotation       = Input.GetKey(SnapRotation);
-
-                var rotateZ         = Input.GetKey(RotateZ);
+               var rotateZ         = Input.GetKey(RotateZ);
 
                 var increaseSens    = Input.GetKey(RotationSpeedIncrease) ? 2.5f : 1f;
 
@@ -189,6 +188,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 //Snap Object nearest _snapRotationDegrees
                 if (Input.GetKeyDown(SnapRotation))
                 {
+                    _snapRotation = true;
+
                     var newRot = _grabbedRigidbody.transform.rotation.eulerAngles;
 
                     newRot.x = Mathf.Round(newRot.x / _snapRotationDegrees) * _snapRotationDegrees;
@@ -201,6 +202,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 }
                 else if(Input.GetKeyUp(SnapRotation))
                 {
+                    _snapRotation = false;
                     SetRotationAxisText();
                 }
 
