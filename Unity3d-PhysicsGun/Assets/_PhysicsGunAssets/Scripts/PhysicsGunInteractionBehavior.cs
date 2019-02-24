@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 using UnityStandardAssets.Characters.FirstPerson;
 
 /* Original script "Gravity Gun": https://pastebin.com/w1G8m3dH
@@ -47,6 +48,10 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private bool                    _snapRotation;
    
     private Vector3                 _lockedRot;
+
+    private bool                    _rotationAxis;
+    [SerializeField]
+    private Text                    _rotationAxisText = null;
 
     //ScrollWheel ObjectMovement
     private Vector3                 _scrollWheelInput       = Vector3.zero;
@@ -146,6 +151,16 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
                 var increaseSens    = Input.GetKey(KeyCode.LeftControl) ? 2.5f : 1f;
 
+                if(Input.GetKeyDown(KeyCode.Tab))
+                {
+                    _rotationAxis = !_rotationAxis;
+
+                    if(_rotationAxisText != null)
+                    {
+                        _rotationAxisText.text = _rotationAxis ? "Rotation Axis = Objects Axis" : "Rotation Axis = Player Axis";
+                    }
+                }
+
                 //Snap Object nearest _snapRotationDegrees
                 if (Input.GetKeyDown(KeyCode.LeftShift))
                 {
@@ -206,10 +221,10 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
             var t = _grabbedRigidbody.transform;
 
-            //Find the nearest grabbed transform directions to our players directons
-            var forward = NearestDirection(transform.forward, t);
-            var right = NearestDirection(transform.right, t);
-            var up = NearestDirection(transform.up, t);
+            //Find the nearest grabbed transform directions to our players directions
+            var forward = _rotationAxis ? t.forward : NearestDirection(transform.forward, t);
+            var right   = _rotationAxis ? t.right : NearestDirection(transform.right, t);
+            var up      = _rotationAxis ? t.up : NearestDirection(transform.up, t);
 
 #if UNITY_EDITOR
             Debug.DrawRay(t.position, up * 5f, Color.green);
