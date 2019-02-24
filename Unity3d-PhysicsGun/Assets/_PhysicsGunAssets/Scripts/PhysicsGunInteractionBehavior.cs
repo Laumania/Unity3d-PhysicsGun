@@ -41,10 +41,12 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     [SerializeField]
     private float                   _snappedRotationSens    = 15f;
     /// <summary>The maximum distance at which a new object can be picked up</summary>
-    private const float             _maxGrabDistance        = 50;
+    private const float             _maxGrabDistance        = 50f;
 
     private bool                    _userRotation;
     private bool                    _snapRotation;
+   
+    private Vector3                 _lockedRot;
 
     //ScrollWheel ObjectMovement
     private Vector3                 _scrollWheelInput       = Vector3.zero;
@@ -77,8 +79,6 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
         _lineRendererController = GetComponent<GunLineRenderer>();
     }
-    [SerializeField]
-    private Vector3 _lockedRot;
 
 	private void Update ()
     {
@@ -129,8 +129,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
                     if (_lineRendererController != null)
                         _lineRendererController.StartLineRenderer(_grabbedRigidbody.gameObject);
-
+#if UNITY_EDITOR
                     Debug.DrawRay(hit.point, hit.normal * 10f, Color.red, 10f);
+#endif
                 }
             }
         }
@@ -211,11 +212,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             var up = NearestDirection(transform.up, t);
 
 #if UNITY_EDITOR
-
             Debug.DrawRay(t.position, up * 5f, Color.green);
             Debug.DrawRay(t.position, right * 5f, Color.blue);
             Debug.DrawRay(t.position, forward * 5f, Color.red);
-
 #endif
             // Apply any intentional rotation input made by the player & clear tracked input
             var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.z, forward) * Quaternion.AngleAxis(_rotationInput.y, right) * Quaternion.AngleAxis(-_rotationInput.x, up) *  _grabbedRigidbody.rotation;
@@ -272,13 +271,13 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // NOTE: We need to convert the local-space point back to world coordinates
             // Get the destination point for the point on the object we grabbed
             var holdPoint           = ray.GetPoint(_currentGrabDistance) + _scrollWheelInput;            
-            var centerDestination   = holdPoint - _grabbedRigidbody.transform.TransformVector(_hitOffsetLocal);
+            var centerDestination   = holdPoint - t.TransformVector(_hitOffsetLocal);
 
 #if UNITY_EDITOR
             Debug.DrawLine(ray.origin, holdPoint, Color.blue, Time.fixedDeltaTime);
 #endif
             // Find vector from current position to destination
-            var toDestination = centerDestination - _grabbedRigidbody.transform.position;
+            var toDestination = centerDestination - t.position;
 
             // Calculate force
             var force = (toDestination / Time.fixedDeltaTime * 0.3f) / _grabbedRigidbody.mass;
@@ -296,7 +295,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             }
 
             if (_lineRendererController != null)
-                _lineRendererController.UpdateArcPoints(transform.position, holdPoint, _grabbedRigidbody.transform.TransformPoint(_hitOffsetLocal));
+                _lineRendererController.UpdateArcPoints(transform.position, holdPoint, t.TransformPoint(_hitOffsetLocal));
         }
     }
 
