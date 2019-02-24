@@ -51,6 +51,11 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     public  float                   _snapRotationDegrees    = 45f;
     [SerializeField]
     private float                   _snappedRotationSens    = 15f;
+    [SerializeField]
+    private float                   _rotationSpeed = 2f;
+
+    private Quaternion              _desiredRotation = Quaternion.identity;
+
     /// <summary>The maximum distance at which a new object can be picked up</summary>
     private const float             _maxGrabDistance        = 50f;
 
@@ -174,7 +179,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // We are already holding an object, listen for rotation input
             if (Input.GetKey(Rotate))
             {
-               var rotateZ         = Input.GetKey(RotateZ);
+                var rotateZ         = Input.GetKey(RotateZ);
 
                 var increaseSens    = Input.GetKey(RotationSpeedIncrease) ? 2.5f : 1f;
 
@@ -305,7 +310,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     newRot.y = Mathf.Round(newRot.y / _snapRotationDegrees) * _snapRotationDegrees;
                     newRot.z = Mathf.Round(newRot.z / _snapRotationDegrees) * _snapRotationDegrees;
 
-                    _grabbedRigidbody.MoveRotation(Quaternion.Euler(newRot));
+                    _desiredRotation = Quaternion.Euler(newRot);
 
                     _lockedRot = _zeroVector2;
                 }
@@ -313,7 +318,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             else
             {                
                 //Rotate the object to remain consistent with any changes in player's rotation
-                _grabbedRigidbody.MoveRotation(_userRotation ? intentionalRotation : relativeToPlayerRotation);
+                _desiredRotation = _userRotation ? intentionalRotation : relativeToPlayerRotation;
             }
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
             _grabbedRigidbody.angularVelocity   = _zeroVector3;
@@ -340,6 +345,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             _grabbedRigidbody.velocity = _zeroVector3;
             _grabbedRigidbody.AddForce(force, ForceMode.VelocityChange);
 
+            //Rotate object
+            RotateGrabbedObject();
+
             //We need to recalculte the grabbed distance as the object distance from the player has been changed
             if (_distanceChanged)
             {
@@ -352,6 +360,13 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         }
     }
 
+    private void RotateGrabbedObject()
+    {
+        if (_grabbedRigidbody == null)
+            return;
+
+        _grabbedRigidbody.MoveRotation(Quaternion.Lerp(_grabbedRigidbody.rotation, _desiredRotation, Time.fixedDeltaTime * _rotationSpeed));
+    }
     /// <summary>
     /// Takes a Vector direction and finds the nearest directional vector to it from a transforms directions
     /// </summary>
