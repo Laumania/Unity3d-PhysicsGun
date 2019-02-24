@@ -159,7 +159,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     _rotationDifference                 = Quaternion.Inverse(transform.rotation) * _grabbedRigidbody.rotation;
                     _hitOffsetLocal                     = hit.transform.InverseTransformVector(hit.point - hit.transform.position);
                     _currentGrabDistance                = hit.distance; // Vector3.Distance(ray.origin, hit.point);
-                    _grabbedTransform = _grabbedRigidbody.transform;
+                    _grabbedTransform                   = _grabbedRigidbody.transform;
                     // Set rigidbody's interpolation for proper collision detection when being moved by the player
                     _grabbedRigidbody.interpolation     = RigidbodyInterpolation.Interpolate;
 
@@ -488,6 +488,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         _grabbedRigidbody.freezeRotation            = false;
         _grabbedRigidbody                           = null;
         _scrollWheelInput                           = _zeroVector3;
+        _grabbedTransform                           = null;
 
         if (_lineRendererController != null)
             _lineRendererController.StopLineRenderer();
