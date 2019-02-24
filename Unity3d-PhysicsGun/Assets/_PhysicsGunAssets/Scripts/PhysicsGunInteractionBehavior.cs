@@ -15,12 +15,21 @@ using UnityStandardAssets.Characters.FirstPerson;
 [RequireComponent(typeof(GunLineRenderer))]
 public class PhysicsGunInteractionBehavior : MonoBehaviour
 {
+    [Header("Input Setting")]
+    public KeyCode Rotate = KeyCode.R;
+    public KeyCode SnapRotation = KeyCode.LeftShift;
+    public KeyCode SwitchAxis = KeyCode.Tab;
+    public KeyCode RotateZ = KeyCode.Space;
+    public KeyCode RotationSpeedIncrease = KeyCode.LeftControl;
+    public KeyCode ResetRotation = KeyCode.LeftAlt;
     /// <summary>For easy enable/disable mouse look when rotating objects, we store this reference</summary>
     private FirstPersonController   _firstPersonController;
 
     /// <summary>The rigidbody we are currently holding</summary>
     private Rigidbody               _grabbedRigidbody;
 
+    /// <summary>The transfor of the rigidbody we are holding</summary>
+    private Transform t; 
     /// <summary>The offset vector from the object's position to hit point, in local space</summary>
     private Vector3                 _hitOffsetLocal;
 
@@ -44,10 +53,16 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     /// <summary>The maximum distance at which a new object can be picked up</summary>
     private const float             _maxGrabDistance        = 50f;
 
+    [SerializeField, Tooltip("Input values above this will be considered and intentional change in rotation")]
+    private float                   _rotationTollerance = 0.8f;
+
     private bool                    _userRotation;
     private bool                    _snapRotation;
    
     private Vector3                 _lockedRot;
+    private Vector3 forward;
+    private Vector3 up;
+    private Vector3 right;
 
     private bool                    _rotationAxis;
     [SerializeField]
@@ -83,11 +98,13 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             Debug.LogError($"{nameof(_firstPersonController)} is null and the gravity gun won't work properly!", this);
 
         _lineRendererController = GetComponent<GunLineRenderer>();
+
+        SetRotationAxisText();
     }
 
 	private void Update ()
     {
-        _userRotation = Input.GetKey(KeyCode.R);
+        _userRotation = Input.GetKey(Rotate);
 
         _firstPersonController.enabled = !_userRotation;
 
@@ -128,7 +145,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     _rotationDifference                 = Quaternion.Inverse(transform.rotation) * _grabbedRigidbody.rotation;
                     _hitOffsetLocal                     = hit.transform.InverseTransformVector(hit.point - hit.transform.position);
                     _currentGrabDistance                = hit.distance; // Vector3.Distance(ray.origin, hit.point);
-
+                    t = _grabbedRigidbody.transform;
                     // Set rigidbody's interpolation for proper collision detection when being moved by the player
                     _grabbedRigidbody.interpolation     = RigidbodyInterpolation.Interpolate;
 
@@ -142,27 +159,35 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         }
         else
         {
-            // We are already holding an object, listen for rotation input
-            if (Input.GetKey(KeyCode.R))
+            if(Input.GetKeyDown(Rotate))
             {
-                _snapRotation       = Input.GetKey(KeyCode.LeftShift);
+                SetRotationAxisText();
+            }
 
-                var rotateZ         = Input.GetKey(KeyCode.Space);
+            if (Input.GetKey(ResetRotation))
+            {
+                _grabbedRigidbody.MoveRotation(Quaternion.identity);
+                SetRotationAxisText();
+            }
 
-                var increaseSens    = Input.GetKey(KeyCode.LeftControl) ? 2.5f : 1f;
+            // We are already holding an object, listen for rotation input
+            if (Input.GetKey(Rotate))
+            {
+                _snapRotation       = Input.GetKey(SnapRotation);
 
-                if(Input.GetKeyDown(KeyCode.Tab))
+                var rotateZ         = Input.GetKey(RotateZ);
+
+                var increaseSens    = Input.GetKey(RotationSpeedIncrease) ? 2.5f : 1f;
+
+                if(Input.GetKeyDown(SwitchAxis))
                 {
                     _rotationAxis = !_rotationAxis;
 
-                    if(_rotationAxisText != null)
-                    {
-                        _rotationAxisText.text = _rotationAxis ? "Rotation Axis = Objects Axis" : "Rotation Axis = Player Axis";
-                    }
+                    SetRotationAxisText();
                 }
 
                 //Snap Object nearest _snapRotationDegrees
-                if (Input.GetKeyDown(KeyCode.LeftShift))
+                if (Input.GetKeyDown(SnapRotation)
                 {
                     var newRot = _grabbedRigidbody.transform.rotation.eulerAngles;
 
@@ -171,11 +196,27 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     newRot.z = Mathf.Round(newRot.z / _snapRotationDegrees) * _snapRotationDegrees;
 
                     _grabbedRigidbody.MoveRotation(Quaternion.Euler(newRot));
+
+                    SetRotationAxisText();
+                }
+                else if(Input.GetKeyUp(SnapRotation))
+                {
+                    SetRotationAxisText();
                 }
 
-                _rotationInput.x    = rotateZ ? 0f : Input.GetAxisRaw("Mouse X") * _rotationSenstivity * increaseSens;
-                _rotationInput.y    = Input.GetAxisRaw("Mouse Y") * _rotationSenstivity * increaseSens;
-                _rotationInput.z    = rotateZ ? Input.GetAxisRaw("Mouse X") * _rotationSenstivity * increaseSens : 0f;
+                var x = Input.GetAxisRaw("Mouse X");
+                var y = Input.GetAxisRaw("Mouse Y");
+
+                if (Mathf.Abs(x) > _rotationTollerance)
+                {
+                    _rotationInput.x = rotateZ ? 0f : x * _rotationSenstivity * increaseSens;                   
+                    _rotationInput.z = rotateZ ? x * _rotationSenstivity * increaseSens : 0f;
+                }
+
+                if(Mathf.Abs(y) > _rotationTollerance)
+                {
+                    _rotationInput.y = y * _rotationSenstivity * increaseSens;
+                }
             }
             else
             {
@@ -219,12 +260,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // We are holding an object, time to rotate & move it
             Ray ray = CenterRay();
 
-            var t = _grabbedRigidbody.transform;
-
-            //Find the nearest grabbed transform directions to our players directions
-            var forward = _rotationAxis ? t.forward : NearestDirection(transform.forward, t);
-            var right   = _rotationAxis ? t.right : NearestDirection(transform.right, t);
-            var up      = _rotationAxis ? t.up : NearestDirection(transform.up, t);
+            UpdateRotationAxis();
 
 #if UNITY_EDITOR
             Debug.DrawRay(t.position, up * 5f, Color.green);
@@ -285,8 +321,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // Calculate object's center position based on the offset we stored
             // NOTE: We need to convert the local-space point back to world coordinates
             // Get the destination point for the point on the object we grabbed
-            var holdPoint           = ray.GetPoint(_currentGrabDistance) + _scrollWheelInput;            
-            var centerDestination   = holdPoint - t.TransformVector(_hitOffsetLocal);
+            var holdPoint           = ray.GetPoint(_currentGrabDistance) + _scrollWheelInput;
+            var centerDestination = holdPoint - t.TransformVector(_hitOffsetLocal);
 
 #if UNITY_EDITOR
             Debug.DrawLine(ray.origin, holdPoint, Color.blue, Time.fixedDeltaTime);
@@ -332,20 +368,68 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             -t.forward
         };
 
-        var maxDot = -Mathf.Infinity;
-        var ret = _zeroVector3;
+        var maxDot  = -Mathf.Infinity;
+        var ret     = _zeroVector3;
 
         for(var i = 0; i < 6; i++)
         {
             var dot = Vector3.Dot(v, directions[i]);
             if(dot > maxDot)
             {
-                ret = directions[i];
-                maxDot = dot;
+                ret     = directions[i];
+                maxDot  = dot;
             }
         }
 
         return ret;
+    }
+
+    //Update Rotation axis based on movement
+    private void UpdateRotationAxis()
+    {
+        if (!_snapRotation)
+        {
+            //if (Mathf.Abs(_rotationInput.x) > _rotationTollerance * _rotationSenstivity)
+            //{
+            //    forward = _rotationAxis ? t.forward : NearestDirection(transform.forward, t);
+            //    right   = _rotationAxis ? t.right   : NearestDirection(transform.right, t);
+            //}
+            //if (Mathf.Abs(_rotationInput.y) > _rotationTollerance * _rotationSenstivity)
+            //{
+            //    forward = _rotationAxis ? t.forward : NearestDirection(transform.forward, t);
+            //    up      = _rotationAxis ? t.up      : NearestDirection(transform.up, t);
+            //}
+            //if (Mathf.Abs(_rotationInput.z) > _rotationTollerance * _rotationSenstivity)
+            //{
+            //    right = _rotationAxis ? t.right : NearestDirection(transform.right, t);
+            //    up    = _rotationAxis ? t.up    : NearestDirection(transform.up, t);
+            //}
+
+            forward = transform.forward;
+            right   = transform.right;
+            up      = transform.up;
+
+            return;
+        }
+
+        forward = _rotationAxis ? t.forward : NearestDirection(transform.forward, t);
+        right   = _rotationAxis ? t.right   : NearestDirection(transform.right, t);
+        up      = _rotationAxis ? t.up      : NearestDirection(transform.up, t);
+    }
+
+    private void SetRotationAxisText()
+    {
+        if (_rotationAxisText != null)
+        {
+            if(!_snapRotation)
+            {
+                _rotationAxisText.enabled = false;
+                return;
+            }
+
+            _rotationAxisText.enabled = true;
+            _rotationAxisText.text = _rotationAxis ? "Snapped Rotation Axis = Objects Axis" : "Snapped Rotation Axis = Player Axis";
+        }
     }
 
     /// <returns>Ray from center of the main camera's viewport forward</returns>
