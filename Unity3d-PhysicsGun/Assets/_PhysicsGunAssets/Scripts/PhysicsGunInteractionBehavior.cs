@@ -30,7 +30,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Rigidbody               _grabbedRigidbody;
 
     /// <summary>The transfor of the rigidbody we are holding</summary>
-    private Transform t; 
+    private Transform               _grabbedTransform; 
+
     /// <summary>The offset vector from the object's position to hit point, in local space</summary>
     private Vector3                 _hitOffsetLocal;
 
@@ -43,6 +44,10 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     /// <summary>The difference between player & object rotation, updated when picked up or when rotated by the player</summary>
     private Quaternion              _rotationDifference;
 
+    /// <summary>The start point for the Laser. This will typically be on the end of the gun</summary>
+    [SerializeField]
+    private Transform               _laserStartPoint = null;
+
     /// <summary>Tracks player input to rotate current object. Used and reset every fixedupdate call</summary>
     private Vector3                 _rotationInput          = Vector3.zero;
     [Header("Rotation Settings")]
@@ -52,7 +57,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     [SerializeField]
     private float                   _snappedRotationSens    = 15f;
     [SerializeField]
-    private float                   _rotationSpeed = 2f;
+    private float                   _rotationSpeed          = 5f;
 
     private Quaternion              _desiredRotation = Quaternion.identity;
 
@@ -66,9 +71,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private bool                    _snapRotation;
    
     private Vector3                 _lockedRot;
-    private Vector3 forward;
-    private Vector3 up;
-    private Vector3 right;
+    private Vector3                 _forward;
+    private Vector3                 _up;
+    private Vector3                 _right;
 
     private bool                    _rotationAxis;
     [SerializeField]
@@ -90,7 +95,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Vector3                 _oneVector3             = Vector3.one;
     private Vector3                 _zeroVector2            = Vector2.zero;
 
-    private GunLineRenderer _lineRendererController;
+    private GunLineRenderer         _lineRendererController;
 
     private GameObject              _laserGlowEndPoint;
 
@@ -106,6 +111,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         _lineRendererController = GetComponent<GunLineRenderer>();
 
         SetRotationAxisText();
+
+        if (_laserStartPoint == null)
+            _laserStartPoint = transform;
     }
 
 	private void Update ()
@@ -151,7 +159,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     _rotationDifference                 = Quaternion.Inverse(transform.rotation) * _grabbedRigidbody.rotation;
                     _hitOffsetLocal                     = hit.transform.InverseTransformVector(hit.point - hit.transform.position);
                     _currentGrabDistance                = hit.distance; // Vector3.Distance(ray.origin, hit.point);
-                    t = _grabbedRigidbody.transform;
+                    _grabbedTransform = _grabbedRigidbody.transform;
                     // Set rigidbody's interpolation for proper collision detection when being moved by the player
                     _grabbedRigidbody.interpolation     = RigidbodyInterpolation.Interpolate;
 
@@ -270,12 +278,12 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             UpdateRotationAxis();
 
 #if UNITY_EDITOR
-            Debug.DrawRay(t.position, up * 5f, Color.green);
-            Debug.DrawRay(t.position, right * 5f, Color.blue);
-            Debug.DrawRay(t.position, forward * 5f, Color.red);
+            Debug.DrawRay(_grabbedTransform.position, _up * 5f, Color.green);
+            Debug.DrawRay(_grabbedTransform.position, _right * 5f, Color.blue);
+            Debug.DrawRay(_grabbedTransform.position, _forward * 5f, Color.red);
 #endif
             // Apply any intentional rotation input made by the player & clear tracked input
-            var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.z, forward) * Quaternion.AngleAxis(_rotationInput.y, right) * Quaternion.AngleAxis(-_rotationInput.x, up) *  _grabbedRigidbody.rotation;
+            var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.z, _forward) * Quaternion.AngleAxis(_rotationInput.y, _right) * Quaternion.AngleAxis(-_rotationInput.x, _up) *  _grabbedRigidbody.rotation;
             var relativeToPlayerRotation    = transform.rotation * _rotationDifference;
 
             if (_userRotation && _snapRotation)
@@ -302,7 +310,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                         }
                     }
 
-                    var q = Quaternion.AngleAxis(-_lockedRot.x, up) * Quaternion.AngleAxis(_lockedRot.y, right) * Quaternion.AngleAxis(_lockedRot.z, forward) * _grabbedRigidbody.rotation;
+                    var q = Quaternion.AngleAxis(-_lockedRot.x, _up) * Quaternion.AngleAxis(_lockedRot.y, _right) * Quaternion.AngleAxis(_lockedRot.z, _forward) * _grabbedRigidbody.rotation;
 
                     var newRot = q.eulerAngles;
 
@@ -329,13 +337,13 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // NOTE: We need to convert the local-space point back to world coordinates
             // Get the destination point for the point on the object we grabbed
             var holdPoint           = ray.GetPoint(_currentGrabDistance) + _scrollWheelInput;
-            var centerDestination = holdPoint - t.TransformVector(_hitOffsetLocal);
+            var centerDestination = holdPoint - _grabbedTransform.TransformVector(_hitOffsetLocal);
 
 #if UNITY_EDITOR
             Debug.DrawLine(ray.origin, holdPoint, Color.blue, Time.fixedDeltaTime);
 #endif
             // Find vector from current position to destination
-            var toDestination = centerDestination - t.position;
+            var toDestination = centerDestination - _grabbedTransform.position;
 
             // Calculate force
             var force = (toDestination / Time.fixedDeltaTime * 0.3f) / _grabbedRigidbody.mass;
@@ -356,7 +364,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             }
 
             if (_lineRendererController != null)
-                _lineRendererController.UpdateArcPoints(transform.position, holdPoint, t.TransformPoint(_hitOffsetLocal));
+                _lineRendererController.UpdateArcPoints(_laserStartPoint.position, holdPoint, _grabbedTransform.TransformPoint(_hitOffsetLocal));
         }
     }
 
@@ -422,16 +430,16 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             //    up    = _rotationAxis ? t.up    : NearestDirection(transform.up, t);
             //}
 
-            forward = transform.forward;
-            right   = transform.right;
-            up      = transform.up;
+            _forward = transform.forward;
+            _right   = transform.right;
+            _up      = transform.up;
 
             return;
         }
 
-        forward = _rotationAxis ? t.forward : NearestDirection(transform.forward, t);
-        right   = _rotationAxis ? t.right   : NearestDirection(transform.right, t);
-        up      = _rotationAxis ? t.up      : NearestDirection(transform.up, t);
+        _forward = _rotationAxis ? _grabbedTransform.forward : NearestDirection(transform.forward, _grabbedTransform);
+        _right   = _rotationAxis ? _grabbedTransform.right   : NearestDirection(transform.right, _grabbedTransform);
+        _up      = _rotationAxis ? _grabbedTransform.up      : NearestDirection(transform.up, _grabbedTransform);
     }
 
     private void SetRotationAxisText()
