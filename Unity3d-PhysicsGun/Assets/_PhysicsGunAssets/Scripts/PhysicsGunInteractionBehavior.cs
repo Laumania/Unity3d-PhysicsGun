@@ -187,7 +187,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 }
 
                 //Snap Object nearest _snapRotationDegrees
-                if (Input.GetKeyDown(SnapRotation)
+                if (Input.GetKeyDown(SnapRotation))
                 {
                     var newRot = _grabbedRigidbody.transform.rotation.eulerAngles;
 
