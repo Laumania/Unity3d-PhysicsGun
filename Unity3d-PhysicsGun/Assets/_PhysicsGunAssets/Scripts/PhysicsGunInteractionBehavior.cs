@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.UI;
 using UnityStandardAssets.Characters.FirstPerson;
 
@@ -46,7 +47,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
     /// <summary>The start point for the Laser. This will typically be on the end of the gun</summary>
     [SerializeField]
-    private Transform               _laserStartPoint = null;
+    private Transform               _laserStartPoint        = null;
 
     /// <summary>Tracks player input to rotate current object. Used and reset every fixedupdate call</summary>
     private Vector3                 _rotationInput          = Vector3.zero;
@@ -59,13 +60,13 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     [SerializeField]
     private float                   _rotationSpeed          = 5f;
 
-    private Quaternion              _desiredRotation = Quaternion.identity;
+    private Quaternion              _desiredRotation        = Quaternion.identity;
 
     /// <summary>The maximum distance at which a new object can be picked up</summary>
     private const float             _maxGrabDistance        = 50f;
 
     [SerializeField, Tooltip("Input values above this will be considered and intentional change in rotation")]
-    private float                   _rotationTollerance = 0.8f;
+    private float                   _rotationTollerance     = 0.8f;
 
     private bool                    _userRotation;
     private bool                    _snapRotation;
@@ -77,7 +78,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
     private bool                    _rotationAxis;
     [SerializeField]
-    private Text                    _rotationAxisText = null;
+    private Text                    _rotationAxisText       = null;
 
     //ScrollWheel ObjectMovement
     private Vector3                 _scrollWheelInput       = Vector3.zero;
@@ -102,6 +103,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private bool                    _justReleased;
     private bool                    _wasKinematic;
 
+    [Header("Axis Arrow"), Space(5), SerializeField]
+    private AxisArrows _arrowController                     = null;
+
     private void Start()
     {
         _firstPersonController = GetComponent<FirstPersonController>();
@@ -120,7 +124,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     {
         _userRotation = Input.GetKey(Rotate);
 
-        _firstPersonController.enabled = !_userRotation;
+        _firstPersonController.lockRotation = _userRotation;
 
         if (!Input.GetMouseButton(0))
         {
@@ -176,6 +180,13 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             if(Input.GetKeyDown(Rotate))
             {
                 SetRotationAxisText();
+                _arrowController.EnableArrows();
+                _desiredRotation = _grabbedRigidbody.rotation;
+            }
+
+            if(Input.GetKeyUp(Rotate))
+            {
+                _arrowController.DisableArrows();
             }
 
             if (Input.GetKey(ResetRotation))
@@ -209,7 +220,11 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     newRot.y = Mathf.Round(newRot.y / _snapRotationDegrees) * _snapRotationDegrees;
                     newRot.z = Mathf.Round(newRot.z / _snapRotationDegrees) * _snapRotationDegrees;
 
-                    _grabbedRigidbody.MoveRotation(Quaternion.Euler(newRot));
+                    var rot = Quaternion.Euler(newRot);
+
+                    _grabbedRigidbody.MoveRotation(rot);
+
+                    _desiredRotation = rot;
 
                     SetRotationAxisText();
                 }
@@ -277,13 +292,15 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
             UpdateRotationAxis();
 
+            _arrowController.SetArrowPos(_up, _right, _forward, _grabbedTransform);
+
 #if UNITY_EDITOR
-            Debug.DrawRay(_grabbedTransform.position, _up * 5f, Color.green);
-            Debug.DrawRay(_grabbedTransform.position, _right * 5f, Color.blue);
-            Debug.DrawRay(_grabbedTransform.position, _forward * 5f, Color.red);
+            Debug.DrawRay(_grabbedTransform.position, _up * 5f      , Color.green);
+            Debug.DrawRay(_grabbedTransform.position, _right * 5f   , Color.red);
+            Debug.DrawRay(_grabbedTransform.position, _forward * 5f , Color.blue);
 #endif
             // Apply any intentional rotation input made by the player & clear tracked input
-            var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.z, _forward) * Quaternion.AngleAxis(_rotationInput.y, _right) * Quaternion.AngleAxis(-_rotationInput.x, _up) *  _grabbedRigidbody.rotation;
+            var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.z, _forward) * Quaternion.AngleAxis(_rotationInput.y, _right) * Quaternion.AngleAxis(-_rotationInput.x, _up) * _desiredRotation;
             var relativeToPlayerRotation    = transform.rotation * _rotationDifference;
 
             if (_userRotation && _snapRotation)
@@ -310,7 +327,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                         }
                     }
 
-                    var q = Quaternion.AngleAxis(-_lockedRot.x, _up) * Quaternion.AngleAxis(_lockedRot.y, _right) * Quaternion.AngleAxis(_lockedRot.z, _forward) * _grabbedRigidbody.rotation;
+                    var q = Quaternion.AngleAxis(-_lockedRot.x, _up) * Quaternion.AngleAxis(_lockedRot.y, _right) * Quaternion.AngleAxis(_lockedRot.z, _forward) * _desiredRotation;
 
                     var newRot = q.eulerAngles;
 
@@ -324,14 +341,14 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 }
             }
             else
-            {                
+            {
                 //Rotate the object to remain consistent with any changes in player's rotation
                 _desiredRotation = _userRotation ? intentionalRotation : relativeToPlayerRotation;
             }
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
             _grabbedRigidbody.angularVelocity   = _zeroVector3;
             _rotationInput                      = _zeroVector2;
-            _rotationDifference                 = Quaternion.Inverse(transform.rotation) * _grabbedRigidbody.rotation;
+            _rotationDifference                 = Quaternion.Inverse(transform.rotation) * _desiredRotation;
 
             // Calculate object's center position based on the offset we stored
             // NOTE: We need to convert the local-space point back to world coordinates
@@ -346,7 +363,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             var toDestination = centerDestination - _grabbedTransform.position;
 
             // Calculate force
-            var force = (toDestination / Time.fixedDeltaTime * 0.3f) / _grabbedRigidbody.mass;
+            var force = toDestination / Time.fixedDeltaTime * 0.3f / _grabbedRigidbody.mass;
 
             //force += _scrollWheelInput;
             // Remove any existing velocity and add force to move to final position
@@ -364,7 +381,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             }
 
             if (_lineRendererController != null)
-                _lineRendererController.UpdateArcPoints(_laserStartPoint.position, holdPoint, _grabbedTransform.TransformPoint(_hitOffsetLocal));
+                _lineRendererController.UpdateArcPoints(_laserStartPoint.position, holdPoint, _grabbedTransform.TransformPoint(_hitOffsetLocal));            
         }
     }
 
@@ -375,31 +392,68 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
         _grabbedRigidbody.MoveRotation(Quaternion.Lerp(_grabbedRigidbody.rotation, _desiredRotation, Time.fixedDeltaTime * _rotationSpeed));
     }
-    /// <summary>
-    /// Takes a Vector direction and finds the nearest directional vector to it from a transforms directions
-    /// </summary>
-    /// <param name="v">Vector Direction</param>
-    /// <param name="t">Transform to check</param>
-    /// <returns></returns>
-    private Vector3 NearestDirection(Vector3 v, Transform t)
+
+    //Update Rotation axis based on movement
+    private void UpdateRotationAxis()
     {
-        var directions = new Vector3[]
+        if (!_snapRotation)
         {
-            t.right,
-            -t.right,
-            t.up,
-            -t.up,
-            t.forward,
-            -t.forward
+            _forward    = transform.forward;
+            _right      = transform.right;
+            _up         = transform.up;
+
+            return;
+        }
+
+        if (_rotationAxis)
+        {
+            _forward    = _grabbedTransform.forward;
+            _right      = _grabbedTransform.right;
+            _up         = _grabbedTransform.up;
+
+            return;
+        }
+
+        NearestTranformDirection(_grabbedTransform, transform, ref _up, ref _forward, ref _right);
+    }
+
+    private void NearestTranformDirection(Transform transformToCheck, Transform referenceTransform, ref Vector3 up, ref Vector3 forward, ref Vector3 right)
+    {
+        var directions = new List<Vector3>()
+        {
+            transformToCheck.forward,
+            -transformToCheck.forward,
+            transformToCheck.up,
+            -transformToCheck.up,
+            transformToCheck.right,
+            -transformToCheck.right,
         };
 
-        var maxDot  = -Mathf.Infinity;
-        var ret     = _zeroVector3;
+        //Find the up Vector
+        up = GetDirectionVector(directions, referenceTransform.up);
+        //Remove Vectors from list to prevent duplicates and the opposite vector being found in case where the player is at around a 45 degree angle to the object
+        directions.Remove(up);
+        directions.Remove(-up);
+        //Find the Forward Vector       
+        forward = GetDirectionVector(directions, referenceTransform.forward);
+        //Remove used directions
+        directions.Remove(forward);
+        directions.Remove(-forward);
 
-        for(var i = 0; i < 6; i++)
+        right = GetDirectionVector(directions, referenceTransform.right);
+
+    }
+
+    private Vector3 GetDirectionVector(List<Vector3> directions, Vector3 direction)
+    {
+        var maxDot  = -Mathf.Infinity;
+        var ret     = Vector3.zero;
+
+        for (var i = 0; i < directions.Count; i++)
         {
-            var dot = Vector3.Dot(v, directions[i]);
-            if(dot > maxDot)
+            var dot = Vector3.Dot(direction, directions[i]);
+
+            if (dot > maxDot)
             {
                 ret     = directions[i];
                 maxDot  = dot;
@@ -407,39 +461,6 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         }
 
         return ret;
-    }
-
-    //Update Rotation axis based on movement
-    private void UpdateRotationAxis()
-    {
-        if (!_snapRotation)
-        {
-            //if (Mathf.Abs(_rotationInput.x) > _rotationTollerance * _rotationSenstivity)
-            //{
-            //    forward = _rotationAxis ? t.forward : NearestDirection(transform.forward, t);
-            //    right   = _rotationAxis ? t.right   : NearestDirection(transform.right, t);
-            //}
-            //if (Mathf.Abs(_rotationInput.y) > _rotationTollerance * _rotationSenstivity)
-            //{
-            //    forward = _rotationAxis ? t.forward : NearestDirection(transform.forward, t);
-            //    up      = _rotationAxis ? t.up      : NearestDirection(transform.up, t);
-            //}
-            //if (Mathf.Abs(_rotationInput.z) > _rotationTollerance * _rotationSenstivity)
-            //{
-            //    right = _rotationAxis ? t.right : NearestDirection(transform.right, t);
-            //    up    = _rotationAxis ? t.up    : NearestDirection(transform.up, t);
-            //}
-
-            _forward = transform.forward;
-            _right   = transform.right;
-            _up      = transform.up;
-
-            return;
-        }
-
-        _forward = _rotationAxis ? _grabbedTransform.forward : NearestDirection(transform.forward, _grabbedTransform);
-        _right   = _rotationAxis ? _grabbedTransform.right   : NearestDirection(transform.right, _grabbedTransform);
-        _up      = _rotationAxis ? _grabbedTransform.up      : NearestDirection(transform.up, _grabbedTransform);
     }
 
     private void SetRotationAxisText()
@@ -492,5 +513,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
         if (_lineRendererController != null)
             _lineRendererController.StopLineRenderer();
+
+        _arrowController.DisableArrows();        
     }
 }
