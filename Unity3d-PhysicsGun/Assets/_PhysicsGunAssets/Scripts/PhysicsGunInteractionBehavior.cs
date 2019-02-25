@@ -17,12 +17,12 @@ using UnityStandardAssets.Characters.FirstPerson;
 public class PhysicsGunInteractionBehavior : MonoBehaviour
 {
     [Header("Input Setting")]
-    public KeyCode Rotate                   = KeyCode.R;
-    public KeyCode SnapRotation             = KeyCode.LeftShift;
-    public KeyCode SwitchAxis               = KeyCode.Tab;
-    public KeyCode RotateZ                  = KeyCode.Space;
-    public KeyCode RotationSpeedIncrease    = KeyCode.LeftControl;
-    public KeyCode ResetRotation            = KeyCode.LeftAlt;
+    public KeyCode Rotate                                   = KeyCode.R;
+    public KeyCode SnapRotation                             = KeyCode.LeftShift;
+    public KeyCode SwitchAxis                               = KeyCode.Tab;
+    public KeyCode RotateZ                                  = KeyCode.Space;
+    public KeyCode RotationSpeedIncrease                    = KeyCode.LeftControl;
+    public KeyCode ResetRotation                            = KeyCode.LeftAlt;
 
     /// <summary>For easy enable/disable mouse look when rotating objects, we store this reference</summary>
     private FirstPersonController   _firstPersonController;
@@ -54,7 +54,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     [Header("Rotation Settings")]
     [SerializeField]
     private float                   _rotationSenstivity     = 1.5f;
-    public  float                   _snapRotationDegrees    = 45f;
+    public  float                   SnapRotationDegrees     = 45f;
     [SerializeField]
     private float                   _snappedRotationSens    = 15f;
     [SerializeField]
@@ -86,9 +86,11 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     [Header("Scroll Wheel Object Movement"), Space(5)]
     [SerializeField]
     private float                   _scrollWheelSensitivity = 5f;
-    //The min distance the object can be from the player.  The max distance will be _maxGrabDistance;
-    [SerializeField]
+    [SerializeField, Tooltip("The min distance the object can be from the player")]
     private float                   _minObjectDistance      = 2.5f;
+    /// <summary>The maximum distance at which a new object can be picked up</summary>
+    [SerializeField, Tooltip("The maximum distance at which a new object can be picked up")]
+    private float                   _maxGrabDistance        = 50f;
     private bool                    _distanceChanged;
 
     //Vector3.Zero and Vector2.zero create a new Vector3 each time they are called so these simply save that process and a small amount of cpu runtime.
@@ -216,9 +218,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
                     var newRot = _grabbedRigidbody.transform.rotation.eulerAngles;
 
-                    newRot.x = Mathf.Round(newRot.x / _snapRotationDegrees) * _snapRotationDegrees;
-                    newRot.y = Mathf.Round(newRot.y / _snapRotationDegrees) * _snapRotationDegrees;
-                    newRot.z = Mathf.Round(newRot.z / _snapRotationDegrees) * _snapRotationDegrees;
+                    newRot.x = Mathf.Round(newRot.x / SnapRotationDegrees) * SnapRotationDegrees;
+                    newRot.y = Mathf.Round(newRot.y / SnapRotationDegrees) * SnapRotationDegrees;
+                    newRot.z = Mathf.Round(newRot.z / SnapRotationDegrees) * SnapRotationDegrees;
 
                     var rot = Quaternion.Euler(newRot);
 
@@ -315,11 +317,11 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     {
                         if (_lockedRot[i] > _snappedRotationSens)
                         {
-                            _lockedRot[i] += _snapRotationDegrees;
+                            _lockedRot[i] += SnapRotationDegrees;
                         }
                         else if (_lockedRot[i] < -_snappedRotationSens)
                         {
-                            _lockedRot[i] += -_snapRotationDegrees;
+                            _lockedRot[i] += -SnapRotationDegrees;
                         }
                         else
                         {
@@ -331,9 +333,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
                     var newRot = q.eulerAngles;
 
-                    newRot.x = Mathf.Round(newRot.x / _snapRotationDegrees) * _snapRotationDegrees;
-                    newRot.y = Mathf.Round(newRot.y / _snapRotationDegrees) * _snapRotationDegrees;
-                    newRot.z = Mathf.Round(newRot.z / _snapRotationDegrees) * _snapRotationDegrees;
+                    newRot.x = Mathf.Round(newRot.x / SnapRotationDegrees) * SnapRotationDegrees;
+                    newRot.y = Mathf.Round(newRot.y / SnapRotationDegrees) * SnapRotationDegrees;
+                    newRot.z = Mathf.Round(newRot.z / SnapRotationDegrees) * SnapRotationDegrees;
 
                     _desiredRotation = Quaternion.Euler(newRot);
 

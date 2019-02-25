@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class GunLineRenderer : MonoBehaviour
 {
+    private readonly int MainTex                    = Shader.PropertyToID("_MainTex");
+
     [Header("Line Renderer Settings"), Space(5)]
     [SerializeField]
     private Vector2         _uvAnimationRate        = new Vector2(1.0f, 0.0f);
@@ -47,7 +49,7 @@ public class GunLineRenderer : MonoBehaviour
 
         //Animate Line Renderer Texture
         _uvOffset -= _uvAnimationRate * Time.deltaTime;
-        _lineRenderer.material.SetTextureOffset(StringID.MainTex, _uvOffset);
+        _lineRenderer.material.SetTextureOffset(MainTex, _uvOffset);
         _lineRenderer.SetPositions(_inputPoints);
 
         //Align our attached effect with the surface of the grabbed object
