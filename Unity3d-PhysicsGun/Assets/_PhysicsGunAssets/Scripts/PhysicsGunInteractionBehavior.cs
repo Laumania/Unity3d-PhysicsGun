@@ -62,9 +62,6 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
     private Quaternion              _desiredRotation        = Quaternion.identity;
 
-    /// <summary>The maximum distance at which a new object can be picked up</summary>
-    private const float             _maxGrabDistance        = 50f;
-
     [SerializeField, Tooltip("Input values above this will be considered and intentional change in rotation")]
     private float                   _rotationTollerance     = 0.8f;
 
