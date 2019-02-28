@@ -1,7 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
-using UnityStandardAssets.Characters.FirstPerson;
 
 /* Original script "Gravity Gun": https://pastebin.com/w1G8m3dH
  * Original author: Jake Perry, reddit.com/user/nandos13
@@ -23,9 +24,6 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     public KeyCode RotateZ                                  = KeyCode.Space;
     public KeyCode RotationSpeedIncrease                    = KeyCode.LeftControl;
     public KeyCode ResetRotation                            = KeyCode.LeftAlt;
-
-    /// <summary>For easy enable/disable mouse look when rotating objects, we store this reference</summary>
-    private FirstPersonController   _firstPersonController;
 
     /// <summary>The rigidbody we are currently holding</summary>
     private Rigidbody               _grabbedRigidbody;
@@ -65,10 +63,28 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     [SerializeField, Tooltip("Input values above this will be considered and intentional change in rotation")]
     private float                   _rotationTollerance     = 0.8f;
 
-    private bool                    _userRotation;
+    private bool                    m_UserRotation;
+
+    private bool _userRotation
+    {
+        get
+        {
+            return m_UserRotation;
+        }
+        set
+        {
+            if (m_UserRotation != value)
+            {
+                m_UserRotation = value;
+                OnRotation.Invoke(value);
+            }
+        }
+    }
+
     private bool                    _snapRotation;
    
     private Vector3                 _lockedRot;
+
     private Vector3                 _forward;
     private Vector3                 _up;
     private Vector3                 _right;
@@ -102,15 +118,20 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private bool                    _justReleased;
     private bool                    _wasKinematic;
 
-    [Header("Axis Arrow"), Space(5), SerializeField]
-    private AxisArrows _arrowController                     = null;
+    //Rotation start/stop event
+    [Serializable]
+    public class BoolEvent : UnityEvent<bool> { };
+    public BoolEvent                OnRotation;
+
+    //public properties for the Axis Arrows.  These are optional and can be safely removed
+    public Vector3                  CurrentForward              { get { return _forward; } }
+    public Vector3                  CurrentUp                   { get { return _up; } }
+    public Vector3                  CurrentRight                { get { return _right; } }
+
+    public Transform                CurrentGrabbedTransform     { get { return _grabbedTransform; } }
 
     private void Start()
     {
-        _firstPersonController = GetComponent<FirstPersonController>();
-        if(_firstPersonController == null)
-            Debug.LogError($"{nameof(_firstPersonController)} is null and the gravity gun won't work properly!", this);
-
         _lineRendererController = GetComponent<GunLineRenderer>();
 
         SetRotationAxisText();
@@ -121,9 +142,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
 	private void Update ()
     {
-        _userRotation = Input.GetKey(Rotate);
-
-        _firstPersonController.lockRotation = _userRotation;
+        _userRotation = Input.GetKey(Rotate);        
 
         if (!Input.GetMouseButton(0))
         {
@@ -179,13 +198,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             if(Input.GetKeyDown(Rotate))
             {
                 SetRotationAxisText();
-                _arrowController.EnableArrows();
                 _desiredRotation = _grabbedRigidbody.rotation;
-            }
-
-            if(Input.GetKeyUp(Rotate))
-            {
-                _arrowController.DisableArrows();
             }
 
             if (Input.GetKey(ResetRotation))
@@ -290,8 +303,6 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             Ray ray = CenterRay();
 
             UpdateRotationAxis();
-
-            _arrowController.SetArrowPos(_up, _right, _forward, _grabbedTransform);
 
 #if UNITY_EDITOR
             Debug.DrawRay(_grabbedTransform.position, _up * 5f      , Color.green);
@@ -502,6 +513,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
     private void ReleaseObject()
     {
+        //Move rotation to desired rotation in case the lerp hasn't finished
+        _grabbedRigidbody.MoveRotation(_desiredRotation);
         // Reset the rigidbody to how it was before we grabbed it
         _grabbedRigidbody.isKinematic               = _wasKinematic;
         _grabbedRigidbody.interpolation             = _initialInterpolationSetting;
@@ -509,10 +522,10 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         _grabbedRigidbody                           = null;
         _scrollWheelInput                           = _zeroVector3;
         _grabbedTransform                           = null;
+        _userRotation                               = false;
 
         if (_lineRendererController != null)
             _lineRendererController.StopLineRenderer();
-
-        _arrowController.DisableArrows();        
     }
 }
+

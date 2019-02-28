@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class AxisArrows : MonoBehaviour
 {
@@ -8,26 +6,37 @@ public class AxisArrows : MonoBehaviour
     public GameObject YAxis;
     public GameObject ZAxis;
 
+    private bool _arrowActive;
+    private PhysicsGunInteractionBehavior _gun;
+
     public void Start()
     {
-        DisableArrows();
+        EnableArrows(false);
+        _gun = FindObjectOfType<PhysicsGunInteractionBehavior>();
+
+        if(_gun != null)
+        {
+            _gun.OnRotation.AddListener(EnableArrows);
+        }
     }
 
-    public void EnableArrows()
+    public void EnableArrows(bool enable)
     {
-        XAxis.SetActive(true);
-        YAxis.SetActive(true);
-        ZAxis.SetActive(true);
+        _arrowActive = enable;
+        XAxis.SetActive(enable);
+        YAxis.SetActive(enable);
+        ZAxis.SetActive(enable);
     }
 
-    public void DisableArrows()
+    private void Update()
     {
-        XAxis.SetActive(false);
-        YAxis.SetActive(false);
-        ZAxis.SetActive(false);
+        if(_arrowActive && _gun != null && _gun.CurrentGrabbedTransform != null)
+        {
+            SetArrowPos(_gun.CurrentUp, _gun.CurrentRight, _gun.CurrentForward, _gun.CurrentGrabbedTransform);
+        }
     }
 
-    public void SetArrowPos(Vector3 up, Vector3 right, Vector3 forward, Transform t)
+    private void SetArrowPos(Vector3 up, Vector3 right, Vector3 forward, Transform t)
     {
         XAxis.transform.position = t.position;
         YAxis.transform.position = t.position;
