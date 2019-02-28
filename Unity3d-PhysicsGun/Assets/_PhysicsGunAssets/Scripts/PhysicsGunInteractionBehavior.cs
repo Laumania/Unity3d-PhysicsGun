@@ -178,8 +178,6 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
 	private void Update ()
     {
-        _userRotation = Input.GetKey(Rotate);        
-
         if (!Input.GetMouseButton(0))
         {
             // We are not holding the mouse button. Release the object and return before checking for a new one
@@ -229,9 +227,11 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 }
             }
         }
-        else
+        else if(_grabbedRigidbody != null)
         {
-            if(Input.GetKeyDown(Rotate))
+            _userRotation = Input.GetKey(Rotate);
+
+            if (Input.GetKeyDown(Rotate))
             {
                 _desiredRotation = _grabbedRigidbody.rotation;
             }
@@ -543,6 +543,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         _grabbedTransform                           = null;
         _userRotation                               = false;
         _snapRotation                               = false;
+        StartPoint                                  = _zeroVector3;
+        MidPoint                                    = _zeroVector3;
+        EndPoint                                    = _zeroVector3;
 
         OnObjectGrabbed.Invoke(null);
     }
