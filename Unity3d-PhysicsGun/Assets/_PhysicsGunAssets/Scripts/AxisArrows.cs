@@ -26,6 +26,13 @@ public class AxisArrows : MonoBehaviour
         XAxis.SetActive(enable);
         YAxis.SetActive(enable);
         ZAxis.SetActive(enable);
+
+        if (!enable)
+        {
+            XAxis.transform.localPosition = Vector3.zero;
+            YAxis.transform.localPosition = Vector3.zero;
+            ZAxis.transform.localPosition = Vector3.zero;
+        }
     }
 
     private void Update()
