@@ -10,7 +10,7 @@ public class FPSControllerBridge : MonoBehaviour
     {
         _fpsController = GetComponent<FirstPersonController>();
 
-        var gun = GetComponent<PhysicsGunInteractionBehavior>();
+        var gun = FindObjectOfType<PhysicsGunInteractionBehavior>();
 
         if (gun != null && _fpsController != null)
         {

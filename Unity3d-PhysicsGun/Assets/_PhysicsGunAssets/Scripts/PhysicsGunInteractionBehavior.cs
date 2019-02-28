@@ -14,10 +14,13 @@ using UnityEngine.UI;
  * WarmedxMints, https://github.com/WarmedxMints
  */
 
-[RequireComponent(typeof(GunLineRenderer))]
 public class PhysicsGunInteractionBehavior : MonoBehaviour
 {
-    [Header("Input Setting")]
+    [Header("LayerMask"), Tooltip("The layer which the gun can grab objects from")]
+    [SerializeField]
+    private LayerMask                                       _grabLayer;
+
+    [Header("Input Setting"), Space(10)]
     public KeyCode Rotate                                   = KeyCode.R;
     public KeyCode SnapRotation                             = KeyCode.LeftShift;
     public KeyCode SwitchAxis                               = KeyCode.Tab;
@@ -49,9 +52,11 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
     /// <summary>Tracks player input to rotate current object. Used and reset every fixedupdate call</summary>
     private Vector3                 _rotationInput          = Vector3.zero;
+
     [Header("Rotation Settings")]
     [SerializeField]
     private float                   _rotationSenstivity     = 1.5f;
+
     public  float                   SnapRotationDegrees     = 45f;
     [SerializeField]
     private float                   _snappedRotationSens    = 15f;
@@ -65,7 +70,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
     private bool                    m_UserRotation;
 
-    private bool _userRotation
+    private bool                    _userRotation
     {
         get
         {
@@ -81,15 +86,49 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         }
     }
 
-    private bool                    _snapRotation;
-   
+    private bool                    m_SnapRotation;
+
+    private bool                    _snapRotation
+    {
+        get
+        {
+            return m_SnapRotation;
+        }
+        set
+        {
+            if (m_SnapRotation != value)
+            {
+                m_SnapRotation = value;
+                OnRotationSnapped.Invoke(value);
+            }
+        }
+    }
+
+    private bool                    m_RotationAxis;
+
+    private bool                    _rotationAxis
+    {
+        get
+        {
+            return m_RotationAxis;
+        }
+        set
+        {
+            if (m_RotationAxis != value)
+            {
+                m_RotationAxis = value;
+                OnAxisChanged.Invoke(value);
+            }
+        }
+    }
+
     private Vector3                 _lockedRot;
 
     private Vector3                 _forward;
     private Vector3                 _up;
     private Vector3                 _right;
 
-    private bool                    _rotationAxis;
+    
     [SerializeField]
     private Text                    _rotationAxisText       = null;
 
@@ -111,34 +150,31 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Vector3                 _oneVector3             = Vector3.one;
     private Vector3                 _zeroVector2            = Vector2.zero;
 
-    private GunLineRenderer         _lineRendererController;
-
-    private GameObject              _laserGlowEndPoint;
-
     private bool                    _justReleased;
     private bool                    _wasKinematic;
-
-    //Rotation start/stop event
+   
     [Serializable]
     public class BoolEvent : UnityEvent<bool> { };
+    [Serializable]
+    public class GrabEvent : UnityEvent<GameObject> { };
+
+    [Header("Events"), Space(10)]
     public BoolEvent                OnRotation;
+    public BoolEvent                OnRotationSnapped;
+    public BoolEvent                OnAxisChanged;
+
+    public GrabEvent                OnObjectGrabbed;
 
     //public properties for the Axis Arrows.  These are optional and can be safely removed
     public Vector3                  CurrentForward              { get { return _forward; } }
     public Vector3                  CurrentUp                   { get { return _up; } }
     public Vector3                  CurrentRight                { get { return _right; } }
-
     public Transform                CurrentGrabbedTransform     { get { return _grabbedTransform; } }
 
-    private void Start()
-    {
-        _lineRendererController = GetComponent<GunLineRenderer>();
-
-        SetRotationAxisText();
-
-        if (_laserStartPoint == null)
-            _laserStartPoint = transform;
-    }
+    //public properties for the Line Renderer
+    public Vector3                  StartPoint                  { get; private set; }
+    public Vector3                  MidPoint                    { get; private set; }
+    public Vector3                  EndPoint                    { get; private set; } 
 
 	private void Update ()
     {
@@ -167,7 +203,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 #if UNITY_EDITOR
             Debug.DrawRay(ray.origin, ray.direction * _maxGrabDistance, Color.blue, 0.01f);
 #endif
-            if (Physics.Raycast(ray, out hit, _maxGrabDistance))
+            if (Physics.Raycast(ray, out hit, _maxGrabDistance, _grabLayer))
             {
                 // Don't pick up kinematic rigidbodies (they can't move)
                 if (hit.rigidbody != null /*&& !hit.rigidbody.isKinematic*/)
@@ -185,8 +221,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     // Set rigidbody's interpolation for proper collision detection when being moved by the player
                     _grabbedRigidbody.interpolation     = RigidbodyInterpolation.Interpolate;
 
-                    if (_lineRendererController != null)
-                        _lineRendererController.StartLineRenderer(_grabbedRigidbody.gameObject);
+                    OnObjectGrabbed.Invoke(_grabbedRigidbody.gameObject);
+
 #if UNITY_EDITOR
                     Debug.DrawRay(hit.point, hit.normal * 10f, Color.red, 10f);
 #endif
@@ -197,14 +233,12 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         {
             if(Input.GetKeyDown(Rotate))
             {
-                SetRotationAxisText();
                 _desiredRotation = _grabbedRigidbody.rotation;
             }
 
             if (Input.GetKey(ResetRotation))
             {
-                _grabbedRigidbody.MoveRotation(Quaternion.identity);
-                SetRotationAxisText();
+                _grabbedRigidbody.MoveRotation(Quaternion.identity);  
             }
 
             // We are already holding an object, listen for rotation input
@@ -218,7 +252,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 {
                     _rotationAxis = !_rotationAxis;
 
-                    SetRotationAxisText();
+                    OnAxisChanged.Invoke(_rotationAxis);
                 }
 
                 //Snap Object nearest _snapRotationDegrees
@@ -237,13 +271,11 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     _grabbedRigidbody.MoveRotation(rot);
 
                     _desiredRotation = rot;
-
-                    SetRotationAxisText();
+     
                 }
                 else if(Input.GetKeyUp(SnapRotation))
                 {
                     _snapRotation = false;
-                    SetRotationAxisText();
                 }
 
                 var x = Input.GetAxisRaw("Mouse X");
@@ -390,8 +422,10 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                 _currentGrabDistance = Vector3.Distance(ray.origin, holdPoint);
             }
 
-            if (_lineRendererController != null)
-                _lineRendererController.UpdateArcPoints(_laserStartPoint.position, holdPoint, _grabbedTransform.TransformPoint(_hitOffsetLocal));            
+            //Update public properties
+            StartPoint  = _laserStartPoint.transform.position;
+            MidPoint    = holdPoint;
+            EndPoint    = _grabbedTransform.TransformPoint(_hitOffsetLocal);
         }
     }
 
@@ -471,22 +505,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         }
 
         return ret;
-    }
-
-    private void SetRotationAxisText()
-    {
-        if (_rotationAxisText != null)
-        {
-            if(!_snapRotation)
-            {
-                _rotationAxisText.enabled = false;
-                return;
-            }
-
-            _rotationAxisText.enabled = true;
-            _rotationAxisText.text = _rotationAxis ? "Snapped Rotation Axis = Objects Axis" : "Snapped Rotation Axis = Player Axis";
-        }
-    }
+    }     
 
     /// <returns>Ray from center of the main camera's viewport forward</returns>
     private Ray CenterRay()
@@ -523,9 +542,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
         _scrollWheelInput                           = _zeroVector3;
         _grabbedTransform                           = null;
         _userRotation                               = false;
+        _snapRotation                               = false;
 
-        if (_lineRendererController != null)
-            _lineRendererController.StopLineRenderer();
+        OnObjectGrabbed.Invoke(null);
     }
 }
 

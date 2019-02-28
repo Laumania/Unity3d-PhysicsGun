@@ -19,6 +19,9 @@ public class AngleSlider : MonoBehaviour
 
     private void OnSliderUpdated(float value)
     {
+        if (_guncontroller == null)
+            return;
+
         _guncontroller.SnapRotationDegrees = value;
         UpdateText(value);
     }
