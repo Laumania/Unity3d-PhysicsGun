@@ -19,6 +19,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     [Header("LayerMask"), Tooltip("The layer which the gun can grab objects from")]
     [SerializeField]
     private LayerMask                                       _grabLayer;
+    [SerializeField]
+    private Camera                                          _camera;
 
     [Header("Input Setting"), Space(10)]
     public KeyCode Rotate                                   = KeyCode.R;
@@ -175,6 +177,15 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     public Vector3                  StartPoint                  { get; private set; }
     public Vector3                  MidPoint                    { get; private set; }
     public Vector3                  EndPoint                    { get; private set; } 
+
+    private void Start()
+    {
+        if(_camera == null)
+        {
+            Debug.LogError($"{nameof(PhysicsGunInteractionBehavior)} missing Camera", this);
+            return;
+        }
+    }
 
 	private void Update ()
     {
@@ -510,7 +521,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     /// <returns>Ray from center of the main camera's viewport forward</returns>
     private Ray CenterRay()
     {
-        return Camera.main.ViewportPointToRay(_oneVector3 * 0.5f);
+        return _camera.ViewportPointToRay(_oneVector3 * 0.5f);
     }
 
     //Check distance is within range when moving object with the scroll wheel
