@@ -18,6 +18,7 @@ public class GunLineRenderer : MonoBehaviour
     private LineRenderer    _lineRenderer;
 
     [SerializeField]
+    [Tooltip("Effect that is shown where the laser/beam hits the target")]
     private Transform       _attachEffect           = null;
 
     private GameObject      _objectToHightlight;
@@ -48,7 +49,10 @@ public class GunLineRenderer : MonoBehaviour
         _physicsGun = FindObjectOfType<PhysicsGunInteractionBehavior>();
 
         if (_physicsGun == null)
+        {
+            Debug.LogError($"{nameof(GunLineRenderer)} is missng a {nameof(PhysicsGunInteractionBehavior)}", this);
             return;
+        }
 
         _physicsGun.OnObjectGrabbed.AddListener(OnObjectGrabbed);
     }

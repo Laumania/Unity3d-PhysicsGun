@@ -129,9 +129,6 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Vector3                 _right;
 
     
-    [SerializeField]
-    private Text                    _rotationAxisText       = null;
-
     //ScrollWheel ObjectMovement
     private Vector3                 _scrollWheelInput       = Vector3.zero;
 
