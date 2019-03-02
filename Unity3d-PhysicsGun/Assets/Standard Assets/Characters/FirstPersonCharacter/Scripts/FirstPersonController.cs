@@ -42,8 +42,7 @@ namespace UnityStandardAssets.Characters.FirstPerson
         private bool m_Jumping;
         private AudioSource m_AudioSource;
 
-        [HideInInspector]
-        public bool lockRotation;
+        public bool LockRotation { get; set; }
         // Use this for initialization
         private void Start()
         {
@@ -59,13 +58,12 @@ namespace UnityStandardAssets.Characters.FirstPerson
 			m_MouseLook.Init(transform , m_Camera.transform);
         }
 
-
         // Update is called once per frame
         private void Update()
         {
             RotateView();
             // the jump state needs to read here to make sure it is not missed
-            if (!m_Jump && !lockRotation)
+            if (!m_Jump && !LockRotation)
             {
                 m_Jump = CrossPlatformInputManager.GetButtonDown("Jump");
             }
@@ -238,7 +236,7 @@ namespace UnityStandardAssets.Characters.FirstPerson
 
         private void RotateView()
         {
-            if (lockRotation)
+            if (LockRotation)
                 return;
 
             m_MouseLook.LookRotation (transform, m_Camera.transform);

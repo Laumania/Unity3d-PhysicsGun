@@ -1,6 +1,8 @@
-﻿using cakeslice;
+﻿using System;
+using cakeslice;
 using UnityEngine;
 
+[RequireComponent(typeof(GunLineRenderer))]
 public class GunLineRenderer : MonoBehaviour
 {
     private readonly int MainTex                    = Shader.PropertyToID("_MainTex");
@@ -21,6 +23,8 @@ public class GunLineRenderer : MonoBehaviour
     private GameObject      _objectToHightlight;
     private OutlineEffect   _outlineEffect;
 
+    private PhysicsGunInteractionBehavior _physicsGun;
+
     private void Start()
     {
         _lineRenderer = GetComponent<LineRenderer>();
@@ -40,12 +44,32 @@ public class GunLineRenderer : MonoBehaviour
         }
 
         _attachEffect.gameObject.SetActive(false);
+
+        _physicsGun = FindObjectOfType<PhysicsGunInteractionBehavior>();
+
+        if (_physicsGun == null)
+            return;
+
+        _physicsGun.OnObjectGrabbed.AddListener(OnObjectGrabbed);
+    }
+
+    private void OnObjectGrabbed(GameObject grabbedObject)
+    {
+        if (grabbedObject != null)
+        {
+            StartLineRenderer(grabbedObject);
+            return;
+        }
+
+        StopLineRenderer();
     }
 
     private void LateUpdate()
     {
         if (!_lineRenderer.enabled)
             return;
+
+        UpdateArcPoints(_physicsGun.StartPoint, _physicsGun.MidPoint, _physicsGun.EndPoint);
 
         //Animate Line Renderer Texture
         _uvOffset -= _uvAnimationRate * Time.deltaTime;
