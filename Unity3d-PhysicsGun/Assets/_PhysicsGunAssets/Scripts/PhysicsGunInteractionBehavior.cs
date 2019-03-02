@@ -4,14 +4,14 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
-/* Original script "Gravity Gun": https://pastebin.com/w1G8m3dH
- * Original author: Jake Perry, reddit.com/user/nandos13
- * 
- * February 2019, above script was used as the starting point of below script.
- * https://github.com/Laumania/Unity3d-PhysicsGun
- * Repository created and script enhanced by: 
+/* 
+ * Physics Gun script from repository - https://github.com/Laumania/Unity3d-PhysicsGun
+ * Created by:
  * Mads Laumann, https://github.com/laumania
  * WarmedxMints, https://github.com/WarmedxMints
+ *
+ * Original/initial script "Gravity Gun": https://pastebin.com/w1G8m3dH
+ * Original author: Jake Perry, reddit.com/user/nandos13
  */
 
 public class PhysicsGunInteractionBehavior : MonoBehaviour
