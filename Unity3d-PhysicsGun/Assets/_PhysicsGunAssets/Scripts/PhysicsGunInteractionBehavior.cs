@@ -16,6 +16,9 @@ using UnityEngine.UI;
 
 public class PhysicsGunInteractionBehavior : MonoBehaviour
 {
+    [Header("Misc")]
+    public Transform PlayerTransform;
+
     [Header("LayerMask"), Tooltip("The layer which the gun can grab objects from")]
     [SerializeField]
     private LayerMask                                       _grabLayer;
@@ -182,6 +185,12 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             Debug.LogError($"{nameof(PhysicsGunInteractionBehavior)} missing Camera", this);
             return;
         }
+
+        if(PlayerTransform == null) 
+        {
+            PlayerTransform = this.transform;
+            Debug.Log($"As {nameof(PlayerTransform)} is null, it have been set to set to this.transform", this);
+        }
     }
 
 	private void Update ()
@@ -220,7 +229,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
                     _grabbedRigidbody.isKinematic       = false;
                     _grabbedRigidbody.freezeRotation    = true;
                     _initialInterpolationSetting        = _grabbedRigidbody.interpolation;
-                    _rotationDifference                 = Quaternion.Inverse(transform.rotation) * _grabbedRigidbody.rotation;
+                    _rotationDifference                 = Quaternion.Inverse(PlayerTransform.rotation) * _grabbedRigidbody.rotation;
                     _hitOffsetLocal                     = hit.transform.InverseTransformVector(hit.point - hit.transform.position);
                     _currentGrabDistance                = hit.distance; // Vector3.Distance(ray.origin, hit.point);
                     _grabbedTransform                   = _grabbedRigidbody.transform;
@@ -315,8 +324,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 
             if (Mathf.Abs(direction) > 0 && CheckObjectDistance(direction))
             {
-                _distanceChanged = true;
-                _scrollWheelInput = transform.forward * _scrollWheelSensitivity * direction;
+                _distanceChanged    = true;
+                _scrollWheelInput   = PlayerTransform.forward * _scrollWheelSensitivity * direction;
             } 
             else
             {
@@ -351,7 +360,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
 #endif
             // Apply any intentional rotation input made by the player & clear tracked input
             var intentionalRotation         = Quaternion.AngleAxis(_rotationInput.z, _forward) * Quaternion.AngleAxis(_rotationInput.y, _right) * Quaternion.AngleAxis(-_rotationInput.x, _up) * _desiredRotation;
-            var relativeToPlayerRotation    = transform.rotation * _rotationDifference;
+            var relativeToPlayerRotation    = PlayerTransform.rotation * _rotationDifference;
 
             if (_userRotation && _snapRotation)
             {
@@ -398,7 +407,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             // Remove all torque, reset rotation input & store the rotation difference for next FixedUpdate call
             _grabbedRigidbody.angularVelocity   = _zeroVector3;
             _rotationInput                      = _zeroVector2;
-            _rotationDifference                 = Quaternion.Inverse(transform.rotation) * _desiredRotation;
+            _rotationDifference                 = Quaternion.Inverse(PlayerTransform.rotation) * _desiredRotation;
 
             // Calculate object's center position based on the offset we stored
             // NOTE: We need to convert the local-space point back to world coordinates
@@ -450,9 +459,9 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     {
         if (!_snapRotation)
         {
-            _forward    = transform.forward;
-            _right      = transform.right;
-            _up         = transform.up;
+            _forward    = PlayerTransform.forward;
+            _right      = PlayerTransform.right;
+            _up         = PlayerTransform.up;
 
             return;
         }
@@ -466,7 +475,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
             return;
         }
 
-        NearestTranformDirection(_grabbedTransform, transform, ref _up, ref _forward, ref _right);
+        NearestTranformDirection(_grabbedTransform, PlayerTransform, ref _up, ref _forward, ref _right);
     }
 
     private void NearestTranformDirection(Transform transformToCheck, Transform referenceTransform, ref Vector3 up, ref Vector3 forward, ref Vector3 right)
@@ -524,7 +533,7 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     //Check distance is within range when moving object with the scroll wheel
     private bool CheckObjectDistance(float direction)
     {
-        var pointA      = transform.position;
+        var pointA      = PlayerTransform.position;
         var pointB      = _grabbedRigidbody.position;
 
         var distance    = Vector3.Distance(pointA, pointB);
