@@ -3,7 +3,6 @@ The goal of this sample is to show an implementation of the "Physics Gun" behavi
 
 [Video about the creation of this repo, thoughts and reasons behind can be seen here.](https://www.youtube.com/watch?v=HnnhU2hlHkg)
 
-Inline-style: 
 ![alt text](Screenshots/Screenshot_1.png "Physics Gun Sample Screenshot")
 
 # Get started
