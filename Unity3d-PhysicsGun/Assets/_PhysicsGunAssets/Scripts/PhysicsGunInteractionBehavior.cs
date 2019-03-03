@@ -16,9 +16,6 @@ using UnityEngine.UI;
 
 public class PhysicsGunInteractionBehavior : MonoBehaviour
 {
-    [Header("Misc")]
-    public Transform PlayerTransform;
-
     [Header("LayerMask"), Tooltip("The layer which the gun can grab objects from")]
     [SerializeField]
     private LayerMask                                       _grabLayer;
@@ -59,6 +56,8 @@ public class PhysicsGunInteractionBehavior : MonoBehaviour
     private Vector3                 _rotationInput          = Vector3.zero;
 
     [Header("Rotation Settings")]
+    [Tooltip("Transform of the player, that rotations should be relative to")]
+    public Transform                PlayerTransform;
     [SerializeField]
     private float                   _rotationSenstivity     = 1.5f;
 
