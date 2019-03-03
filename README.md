@@ -1,5 +1,5 @@
 # Unity3d Physics Gun Sample
-The goal of this sample is to be an implementation of a "Physics Gun", that mimics the exact behavior as the Physics Gun in Half-Life 2 / Garry's Mod.
+The goal of this sample is to show an implementation of the "Physics Gun" behavior from Half-Life 2 / Garry's Mod / GMod.
 
 [Video about the creation of this repo, thoughts and reasons behind can be seen here.](https://www.youtube.com/watch?v=HnnhU2hlHkg)
 
@@ -8,9 +8,9 @@ Inline-style:
 
 # Get started
 ["PhysicsGunInteractionBehavior.cs"](Unity3d-PhysicsGun/Assets/_PhysicsGunAssets/Scripts/PhysicsGunInteractionBehavior.cs) is the script you are looking for.
-This is the script that does most of the actual logic, however, we encourage you to download the entire project and look at the "PhysicsGunSampleScene". 
+This is the script that does most of the actual logic, however, we encourage you to download the entire project and look at the "PhysicsGunSampleScene" as there are more to it than just the behavior. 
 
-Todo: Write guide
+Todo: ["If somebody want to write a guide to get started, feel free to do a PR."](https://github.com/Laumania/Unity3d-PhysicsGun/issues/8)
 - Needed for outline to work https://github.com/cakeslice/Outline-Effect
 
 Originally the "GravityGun" script in this repo, is based on this script: https://pastebin.com/w1G8m3dH
