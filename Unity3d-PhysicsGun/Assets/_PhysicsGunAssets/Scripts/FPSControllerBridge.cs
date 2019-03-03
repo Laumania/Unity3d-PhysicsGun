@@ -8,7 +8,12 @@ public class FPSControllerBridge : MonoBehaviour
 
     private void Start()
     {
-        _fpsController = GetComponent<FirstPersonController>();
+        _fpsController = FindObjectOfType<FirstPersonController>();
+        if(_fpsController == null)
+        {
+            Debug.LogError($"{nameof(FPSControllerBridge)} is missing {nameof(FirstPersonController)}", this);
+            return;
+        }
 
         var gun = FindObjectOfType<PhysicsGunInteractionBehavior>();
 

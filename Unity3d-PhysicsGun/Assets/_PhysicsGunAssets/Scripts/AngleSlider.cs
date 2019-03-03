@@ -9,9 +9,9 @@ public class AngleSlider : MonoBehaviour
 
     private void Start()
     {
-        _slider = GetComponent<Slider>();
-        _sliderText = GetComponentInChildren<Text>();
-        _guncontroller = FindObjectOfType<PhysicsGunInteractionBehavior>();
+        _slider         = GetComponent<Slider>();
+        _sliderText     = GetComponentInChildren<Text>();
+        _guncontroller  = FindObjectOfType<PhysicsGunInteractionBehavior>();
 
         _slider.onValueChanged.AddListener(OnSliderUpdated);
         UpdateText(_slider.value);
