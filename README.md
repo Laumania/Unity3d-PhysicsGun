@@ -3,6 +3,9 @@ The goal of this sample is to be an implementation of a "Physics Gun", that mimi
 
 [Video about the creation of this repo, thoughts and reasons behind can be seen here.](https://www.youtube.com/watch?v=HnnhU2hlHkg)
 
+Inline-style: 
+![alt text](Screenshots/Screenshot_1.png "Physics Gun Sample Screenshot")
+
 # Get started
 ["PhysicsGunInteractionBehavior.cs"](Unity3d-PhysicsGun/Assets/_PhysicsGunAssets/Scripts/PhysicsGunInteractionBehavior.cs) is the script you are looking for.
 This is the script that does most of the actual logic, however, we encourage you to download the entire project and look at the "PhysicsGunSampleScene". 
