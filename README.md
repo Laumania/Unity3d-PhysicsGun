@@ -9,6 +9,8 @@ The goal of this sample is to show an implementation of the "Physics Gun" behavi
 ["PhysicsGunInteractionBehavior.cs"](Unity3d-PhysicsGun/Assets/_PhysicsGunAssets/Scripts/PhysicsGunInteractionBehavior.cs) is the script you are looking for.
 This is the script that does most of the actual logic, however, we encourage you to download the entire project and look at the "PhysicsGunSampleScene" as there are more to it than just the behavior. 
 
+Works with Unity v2020.2.2f1
+
 Todo: ["If somebody want to write a guide to get started, feel free to do a PR."](https://github.com/Laumania/Unity3d-PhysicsGun/issues/8)
 - Needed for outline to work https://github.com/cakeslice/Outline-Effect
 
