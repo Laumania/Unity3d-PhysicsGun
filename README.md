@@ -1,7 +1,7 @@
 # Unity3d Physics Gun Sample
 The goal of this sample is to show an implementation of the "Physics Gun" behavior from Half-Life 2 / Garry's Mod / GMod.
 
-[Video about the creation of this repo, thoughts and reasons behind can be seen here.](https://www.youtube.com/watch?v=HnnhU2hlHkg)
+[Video about the creation of this repo, thoughts and reasons behind can be seen here.](https://www.youtube.com/watch?v=ZnWfChctC9M)
 
 ![alt text](Screenshots/Screenshot_1.png "Physics Gun Sample Screenshot")
 
